@@ -134,7 +134,7 @@
     "release:verify-packed-install": "tsx scripts/release/verify-packed-install.ts",
     "release:publish": "tsx scripts/release/publish.ts",
     "dsh": "node --import tsx/esm apps/cli/src/bin.ts",
-    "dsh:dev": "tsx watch apps/cli/src/bin.ts -- cli",
+    "dsh:dev": "node --watch --import tsx/esm apps/cli/src/bin.ts cli",
     "demo:code-mode": "node scripts/demo-code-mode.mjs",
     "demo:cordis": "node scripts/demo-cordis.mjs",
     "demo:acp": "node --import tsx packages/examples/acp-demo/src/bin.ts --config examples/acp-agent/cordis.yml",
