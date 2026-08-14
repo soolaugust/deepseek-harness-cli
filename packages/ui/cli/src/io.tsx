@@ -54,6 +54,11 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
       buffer.push(line)
     }
   }
+  // Switch to the alternate screen first so the transcript owns the whole
+  // terminal: the input bar stays pinned at the bottom and the mouse wheel
+  // scrolls inside the ink UI instead of the terminal's own history. Only on a
+  // real TTY — piped/CI output must not be polluted with screen-switch codes.
+  if (process.stdout.isTTY) process.stdout.write('\x1b[?1049h')
   const instance = render(
     <CliApp
       store={options.view}
@@ -76,6 +81,8 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
     dispose: () => {
       disposed = true
       instance.unmount()
+      // Leave the alternate screen, restoring the terminal's prior content.
+      if (process.stdout.isTTY) process.stdout.write('\x1b[?1049l')
     },
   }
 }
