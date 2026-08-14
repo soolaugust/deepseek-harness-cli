@@ -14,6 +14,7 @@ function frame(partial: Partial<CliViewState>): string {
       ttftMs: 1200, ttftSteps: 1, inputTokens: 640_000,
       cacheReadTokens: 960_000, outputTokens: 13_400,
     },
+    permission: 'workspace-write',
     ...partial,
   }
   const { lastFrame } = render(<StatusBar view={view} />)
@@ -39,5 +40,15 @@ describe('StatusBar', () => {
     })
     expect(out).toContain('0 轮 · 0 步')
     expect(out).toContain('LLM 0ms')
+  })
+
+  it('renders the permission badge with the cycle hint', () => {
+    const out = frame({ permission: 'workspace-write' })
+    expect(out).toContain('⏵⏵ workspace-write on (shift+tab to cycle)')
+  })
+
+  it('labels the full-access preset as bypass permissions', () => {
+    const out = frame({ permission: 'danger-full-access' })
+    expect(out).toContain('⏵⏵ bypass permissions on (shift+tab to cycle)')
   })
 })

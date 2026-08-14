@@ -27,6 +27,8 @@ export interface InteractiveIoOptions {
   onHistoryUp?(this: void, current: string): string | undefined
   /** Down-arrow history navigation. */
   onHistoryDown?(this: void, current: string): string | undefined
+  /** Shift+Tab cycles the permission preset. */
+  onCyclePermission?(this: void): void
 }
 
 /**
@@ -60,6 +62,7 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
       onExit={() => { options.onExit(); resolveNext(null) }}
       {...(options.onHistoryUp === undefined ? {} : { onHistoryUp: options.onHistoryUp })}
       {...(options.onHistoryDown === undefined ? {} : { onHistoryDown: options.onHistoryDown })}
+      {...(options.onCyclePermission === undefined ? {} : { onCyclePermission: options.onCyclePermission })}
     />,
   )
   return {

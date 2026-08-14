@@ -45,4 +45,6 @@ export interface CliViewState {
   readonly sessionId: string
   /** Whole-session statistics for the status line. */
   readonly stats: CliStats
+  /** The active permission preset, e.g. `workspace-write`. */
+  readonly permission: string
 }

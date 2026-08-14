@@ -20,6 +20,8 @@ export interface CliViewStore {
   append(event: SessionEvent, sessionId: string): void
   /** Append a system notice (command output, interruption, approvals). */
   notice(text: string): void
+  /** Update the active permission preset for the badge. */
+  setPermission(preset: string): void
   /** Clear the scroll region. */
   clear(): void
 }
@@ -34,6 +36,7 @@ export function initialViewState(): CliViewState {
     busy: false,
     sessionId: '',
     stats: { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+    permission: 'workspace-write',
   }
 }
 
@@ -237,6 +240,10 @@ export function createViewStore(): CliViewStore {
     },
     notice: (text) => {
       state = { ...state, items: [...state.items, { kind: 'notice', text }] }
+      emit()
+    },
+    setPermission: (preset) => {
+      state = { ...state, permission: preset }
       emit()
     },
     clear: () => {

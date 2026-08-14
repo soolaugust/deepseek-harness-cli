@@ -27,13 +27,20 @@ export interface CliAppProps {
   onHistoryUp?(this: void, current: string): string | undefined
   /** Down-arrow history navigation. */
   onHistoryDown?(this: void, current: string): string | undefined
+  /** Shift+Tab cycles the permission preset. */
+  onCyclePermission?(this: void): void
 }
 
 /** The assembled terminal UI. */
-export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistoryDown }: CliAppProps) {
+export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistoryDown, onCyclePermission }: CliAppProps) {
   const view = useCliView(store)
   const [input, setInput] = React.useState('')
   useInput((inputChar, key) => {
+    // Shift+Tab cycles the permission preset.
+    if (key.shift && key.tab) {
+      onCyclePermission?.()
+      return
+    }
     // Ctrl+C / Ctrl+D are handled here; printable input belongs to the
     // text input, which also owns the prompt focus.
     if (isCancelKey(inputChar, key)) {

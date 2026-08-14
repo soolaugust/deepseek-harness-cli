@@ -24,9 +24,12 @@ import { createInteractiveIo, installCliApproval } from '@deepseek-ai/dsh-cli-ui
 import { setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-// Empty type import carries the session-persistence Context merge for the
-// latest-session probe through the global service store.
+// Empty type imports carry the session-persistence Context merge for the
+// latest-session probe, and the commands/permission-presets Context merges for
+// the permission-cycle services, through the global service store.
 import type {} from '@deepseek-ai/dsh-session-persistence'
+import type {} from '@deepseek-ai/dsh-commands'
+import type {} from '@deepseek-ai/dsh-permission-presets'
 // Empty type imports carry the loader Context merge for the settlement await
 // and the cmdline Context merge for the appExit host value.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -80,6 +83,31 @@ function loadHistory(file: string): string[] {
   } catch {
     return []
   }
+}
+
+/** The preset cycle order, mirroring Claude Code's shift+tab carousel. */
+const PRESET_CYCLE = ['read-only', 'workspace-write', 'danger-full-access'] as const
+
+/**
+ * Cycle the permission preset one step forward for the live agent.
+ * @param ctx - the plugin context carrying the permission-presets and commands services.
+ * @param agent - the live agent to switch; no-op before the agent exists.
+ * @param view - the view store, updated so the badge reflects the new preset.
+ */
+function cyclePermission(ctx: Context, agent: Agent | undefined, view: CliViewStore): void {
+  if (agent === undefined) return
+  const presets = ctx.get('permissionPresets')
+  const commands = ctx.get('commands')
+  if (presets === undefined || commands === undefined) return
+  const current = presets.current(agent.session.events)
+  const index = PRESET_CYCLE.indexOf(current as (typeof PRESET_CYCLE)[number])
+  const next = PRESET_CYCLE[(index + 1) % PRESET_CYCLE.length] ?? 'workspace-write'
+  void commands.execute(agent, `/permission ${next}`, new AbortController().signal)
+    .then(() => {
+      view.setPermission(next)
+      view.notice(`permission → ${next}`)
+    })
+    .catch(() => { view.notice(`permission switch to ${next} failed`) })
 }
 
 /**
@@ -253,6 +281,7 @@ async function run(
         }
         return undefined
       },
+      onCyclePermission: () => { cyclePermission(ctx, currentHandle?.agent, view) },
     })
     : createPlainIo(view, false)
 
@@ -295,6 +324,9 @@ async function run(
       : await agents.resume({ resumeSessionId: sessionId, agentOptions, setup })
   }
   currentHandle = created
+  // Seed the permission badge with the session's current preset.
+  const presetsSeed = ctx.get('permissionPresets')
+  if (presetsSeed !== undefined) view.setPermission(presetsSeed.current(created.agent.session.events))
   let onEvent = (session: Session, event: SessionEvent): void => {
     const handle = currentHandle
     if (handle === undefined) return

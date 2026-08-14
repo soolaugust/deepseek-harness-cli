@@ -39,6 +39,12 @@
       "path": "../../session/session-persistence"
     },
     {
+      "path": "../../interaction/commands"
+    },
+    {
+      "path": "../../interaction/permission-presets"
+    },
+    {
       "path": "../../ui/cli"
     },
     {
