@@ -1,74 +1,72 @@
-# DeepSeek Harness
+# dsh cli — 交互式终端 Agent
 
 [English](README.md) | 中文
 
-DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
+`dsh cli` 是一个**交互式终端 agent**，fork 自 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 并聚焦于 CLI 使用：在终端里获得像 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 那样的编码体验——全屏 UI、流式输出、工具卡、会话历史、权限控制，而无需浏览器。
 
-它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
+底层是 DeepSeek Harness 的插件架构（[一切皆插件](https://github.com/cordiverse/cordis)），但此仓库只关注并打磨 `dsh cli` 这一条交互链路。
 
-## 开发者预览
+## 特性
 
-DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+- **Claude Code 式交互**：全屏 alternate screen、输入框固定底部、上下箭头历史导航（含跨会话持久历史）
+- **Markdown 终端渲染**：粗体、斜体、代码、列表、标题按终端样式显示
+- **工具卡折叠**：相邻工具调用合并为一行，`Ctrl+O` 展开
+- **会话统计栏**：轮/步、LLM 耗时、首 token 延迟、吞吐、缓存命中率、输入/输出 tokens
+- **权限徽章**：`Shift+Tab` 循环 `read-only → workspace-write → danger-full-access`，`danger-full-access` 显示 "bypass permissions"
+- **自定义 provider**：指向任意 OpenAI 兼容端点（如 mify），模型路由与 `web_search` 均可配置
+- **会话恢复**：重开 `dsh cli` 续上次会话，`/session` 切换
+- **热加载开发**：`pnpm dsh:dev`（node --watch）改源码自动重启
 
-## 运行
+## 快速开始
 
-### 通过 `npm` 运行
-
-安装 `Node.js`，然后运行：
-
-```sh
-npx @deepseek-ai/dsh web
-```
-
-该命令会启动 Web UI，默认地址为 `http://127.0.0.1:3080`。详见 [Web UI 指南](docs/user/guide/index.md)。
-
-### 从源码运行
-
-如需从仓库源码运行：
+要求 Node.js ≥ 22。
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
+# 从源码
+git clone https://github.com/soolaugust/deepseek-harness-cli.git
+cd deepseek-harness-cli
 pnpm install
 pnpm run build
-pnpm dsh web
+pnpm dsh cli
 ```
 
-## 社区与支持
+从 npm：
 
-- 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
-- 为你的插件仓库添加 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 话题，便于被发现。
-- 欢迎加入 DeepSeek Harness 企微群：扫码添加企微小助手并填写入群问卷，完成后小助手会邀请你入群。
+```sh
+npx @deepseek-ai/dsh cli
+```
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">企微小助手</th>
-      <th align="center">入群问卷</th>
-      <th align="center">微信公众号</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/community-wecom-assistant.png" alt="DeepSeek Harness 企微小助手二维码" width="180" height="180"></td>
-      <td align="center"><a href="https://trtgsjkv6r.feishu.cn/share/base/form/shrcnIt5twSVdLGD52KJBckGCgg"><img src="assets/community-wecom-survey.png" alt="DeepSeek Harness 入群问卷二维码" width="180" height="180"></a></td>
-      <td align="center"><img src="assets/community-wechat-official-account.png" alt="DeepSeek Harness 团队微信公众号二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+首次启动会创建/恢复一个会话；输入文字回车发送，模型输出流式渲染在输入框上方。
 
-## 参与贡献
+## 使用
 
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+| 操作 | 效果 |
+| --- | --- |
+| 输入文字 + `Enter` | 发送给 agent |
+| `↑` / `↓` | 历史导航（跨会话持久） |
+| `Shift+Tab` | 循环权限 preset |
+| `Ctrl+O` | 展开/收起工具组 |
+| `Ctrl+C` | 运行中取消当前回合；提示符下退出 |
+| `/exit` `/help` `/clear` `/session` `/model` `/permission` | slash 命令 |
+
+完整说明见 [CLI 指南](docs/user/guide/cli.md)。
+
+## 配置自定义 provider
+
+通过 `~/.dsh/settings.yaml` 指向任意 OpenAI 兼容端点（如 mify、OpenRouter），模型路由和 `web_search` 均可配置。详见 [CLI 指南 · 使用自定义模型提供方](docs/user/guide/cli.md#use-a-custom-model-provider)。
 
 ## 开发
 
-请先阅读[开发指南](docs/development.md)与[架构文档](docs/architecture.md)。
+```sh
+pnpm dsh:dev          # 改源码自动重启（热加载开发）
+pnpm run test         # 单元测试
+pnpm run typecheck    # 类型检查
+```
 
-面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
+## 继承自 DeepSeek Harness
+
+此仓库是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的一个 fork，聚焦于其 `dsh cli` 交互式终端能力。完整的多 profile 架构、Web UI、SDK 等仍在 [上游仓库](https://github.com/deepseek-ai/deepseek-harness)。
 
 ## 许可证
 
 [MIT](LICENSE)
-
-第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
