@@ -116,7 +116,7 @@ export function ScrollRegion({ view }: { view: CliViewState }) {
         : visible.map((row, index) => {
           const globalIndex = offset + index
           return (
-            <Box key={`row-${globalIndex}`} flexDirection="column" marginBottom={1}>
+            <Box key={`row-${globalIndex}`} flexDirection="column" marginBottom={row.tools !== undefined ? 2 : 1}>
               {row.tools !== undefined
                 ? renderToolRow(row.tools, expandedRows[globalIndex] ?? false, `tools-${globalIndex}`)
                 : renderItem(row.item as CliViewItem, `item-${globalIndex}`)}
