@@ -258,15 +258,19 @@ async function run(
   const historyFile = join(resolveDshHome(), 'cli-history.txt')
   const promptHistory: string[] = loadHistory(historyFile)
   let historyIndex = promptHistory.length
+  /** The in-progress draft stashed when navigating up from the prompt. */
+  let draft = ''
   const io = startup.interactive
     ? createInteractiveIo({
       view,
       onCancel: () => { currentHandle?.agent.cancel({ kind: 'user' }) },
       onExit: () => {},
       onHistoryUp: (current) => {
-        if (historyIndex === promptHistory.length && current.trim() !== '') {
-          // Save the in-progress draft so down returns to it.
-          promptHistory.push(current)
+        if (historyIndex === promptHistory.length) {
+          // First up-arrow from the prompt: stash the in-progress draft in a
+          // separate slot so down-arrow can return to it without polluting
+          // the durable history array.
+          draft = current
         }
         if (historyIndex > 0) {
           historyIndex -= 1
@@ -275,8 +279,10 @@ async function run(
         return undefined
       },
       onHistoryDown: () => {
-        if (historyIndex < promptHistory.length - 1) {
+        if (historyIndex < promptHistory.length) {
           historyIndex += 1
+          // The prompt position holds the stashed draft, not a history entry.
+          if (historyIndex === promptHistory.length) return draft
           return promptHistory[historyIndex]
         }
         return undefined
@@ -427,6 +433,7 @@ async function run(
         appendHistory(historyFile, text)
       }
       historyIndex = promptHistory.length
+      draft = ''
     },
   })
   io.dispose()
