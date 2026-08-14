@@ -65,6 +65,20 @@ agent-default-model:
 
 改动在下一个请求即生效，无需重启。要切回，编辑 `settings.yaml` 或为单个会话传 `--model` / `--provider`。
 
+## 配置网页搜索
+
+`web_search` 工具是内置的，说 Anthropic 兼容 Messages API 并使用 `web_search_20250305` 服务端工具。把它指向同一网关的 Anthropic 端点（与 chat-completions base 分开），这样 LLM 路由用自定义 provider 时搜索也能工作。
+
+```yaml
+# $DSH_HOME/settings.yaml
+web-search-deepseek:
+  baseURL: https://gateway.example/anthropic/v1
+  apiKeyEnv: GATEWAY_API_KEY
+  model: vendor/model
+```
+
+key 缺失时以 `WEB_PROVIDER_CREDENTIAL_MISSING` 失败并指名 `apiKeyEnv` 引用——与模型路由相同的解析路径，因此没有独立搜索 key 的 LLM provider 需要其网关暴露 Anthropic 端点。
+
 ## 参数
 
 | 参数 | 含义 |

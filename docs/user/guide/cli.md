@@ -65,6 +65,20 @@ Three points to get right:
 
 Changes take effect on the next request without restarting. To switch back, edit `settings.yaml` or pass `--model` / `--provider` for one session.
 
+## Configure web search
+
+The `web_search` tool is a built-in that speaks the Anthropic-compatible Messages API with the `web_search_20250305` server tool. Point it at the same gateway's Anthropic endpoint (separate from the chat-completions base) so searches work when the LLM route is a custom provider.
+
+```yaml
+# $DSH_HOME/settings.yaml
+web-search-deepseek:
+  baseURL: https://gateway.example/anthropic/v1
+  apiKeyEnv: GATEWAY_API_KEY
+  model: vendor/model
+```
+
+A missing key fails with `WEB_PROVIDER_CREDENTIAL_MISSING`, naming the `apiKeyEnv` reference — the same resolution path as the model route, so an LLM provider without a separate search key needs its gateway to expose the Anthropic endpoint.
+
 ## Flags
 
 | Flag | Meaning |
