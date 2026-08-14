@@ -149,6 +149,12 @@
       "@deepseek-ai/dsh-client-*/invariant": ["./packages/client/*/src/invariant.ts"],
       "@deepseek-ai/dsh-headless/startup": ["./packages/bundle/headless/src/startup.ts"],
       "@deepseek-ai/dsh-web-app/startup": ["./packages/bundle/web-app/src/startup.ts"],
+      "@deepseek-ai/dsh-cli/startup": ["./packages/bundle/cli/src/startup.ts"],
+      "@deepseek-ai/dsh-cli/run": ["./packages/bundle/cli/src/run.ts"],
+      "@deepseek-ai/dsh-cli/view": ["./packages/bundle/cli/src/view.ts"],
+      "@deepseek-ai/dsh-cli/line": ["./packages/bundle/cli/src/line.ts"],
+      "@deepseek-ai/dsh-cli-ui": ["./packages/ui/cli/src"],
+      "@deepseek-ai/dsh-cli-ui/invariant": ["./packages/ui/cli/src/invariant.ts"],
       "@deepseek-ai/dsh-client-*/client": ["./packages/client/*/src/client"],
        // One wildcard maps every @deepseek-ai/dsh-<name> to its source. Package
       // dir names are unique across groups, so first-on-disk-wins resolution is

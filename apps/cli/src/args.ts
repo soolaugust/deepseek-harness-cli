@@ -7,11 +7,11 @@
  * their own flag families and print their own `--help` (see
  * `@deepseek-ai/dsh-cmdline`). Launcher flags therefore come first: the first
  * token this parser does not recognize starts the inner arguments, so
- * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
+ * `dsh --profile cli --resume abc` boots the cli profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
- * `web` is a hardcoded alias for `--profile web`; `plugin` manages a profile's
- * plugin dependencies by forwarding to pnpm.
+ * `web` is a hardcoded alias for `--profile web`, and `cli` for `--profile
+ * cli`; `plugin` manages a profile's plugin dependencies by forwarding to pnpm.
  * @module @deepseek-ai/dsh/args
  */
 
@@ -65,10 +65,10 @@ const HELP_EXAMPLES = `
 Examples:
   dsh --profile web                          boot the web profile (same as: dsh web)
   dsh --profile headless "run the tests"     answer one task, print the result, and exit
-  dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
-  dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
+  dsh --profile cli                          start an interactive terminal session (same as: dsh cli)
+  dsh --profile cli --resume fresh           start a brand-new session
   dsh --profile web --help                   the web app's own flags and help
-  dsh plugin --profile tui add <package>     install a plugin into the tui profile
+  dsh plugin --profile cli add <package>     install a plugin into the cli profile
 `
 
 /**
@@ -166,6 +166,21 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .action((args: string[], options: BootOptions) => {
       rejectParentOptions('web')
       resolved = resolveBoot(web, 'web', options, args)
+    })
+
+  const cli = program.command('cli').description('boot the cli profile (alias of --profile cli); the interactive terminal app\'s own flags follow')
+  cli
+    .helpOption(false)
+    .allowUnknownOption()
+    .passThroughOptions()
+    .enablePositionalOptions()
+    .argument('[args...]', 'arguments for the interactive cli app (see: dsh cli --help)')
+    .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--dump-config', 'print the composed cli-profile tree (with the user layer and any --patch) and exit')
+    .option('--dump-default-config', 'print the cli profile\'s bundle layers (no user layer) and exit')
+    .action((args: string[], options: BootOptions) => {
+      rejectParentOptions('cli')
+      resolved = resolveBoot(cli, 'cli', options, args)
     })
 
   const plugin = program.command('plugin').description('manage a profile\'s plugins by forwarding the remaining arguments to pnpm in the profile directory')

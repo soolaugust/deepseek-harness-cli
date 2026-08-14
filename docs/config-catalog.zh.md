@@ -389,6 +389,47 @@ export type Config = LocalConfig
 
 来源：[`packages/shell/bash-sandbox/src/index.ts:35`](../packages/shell/bash-sandbox/src/index.ts)
 
+<a id="deepseek-aidsh-cli"></a>
+
+## `@deepseek-ai/dsh-cli`
+
+```ts config-catalog
+/** Plugin config: the invocation resolved from this app's provider service. */
+export interface Config {
+  /** The parsed CLI invocation (flags, session choice, permission, io mode). */
+  startup: CliStartupValues
+}
+
+/** What the runner row reads from {@link CLI_STARTUP_SERVICE}. */
+export interface CliStartupValues {
+  /** Override the default model for this session (exact model id). */
+  readonly model?: string
+  /** Override the provider for this session (exact provider id). */
+  readonly provider?: string
+  /** Working directory the session runs in; defaults to the process cwd. */
+  readonly cwd: string
+  /** Which session to drive: latest for this cwd, a fresh one, or a named id. */
+  readonly resume: CliResumeChoice
+  /** Permission preset; the interactive default asks per action. */
+  readonly permission: CliPermission
+  /** Whether to drive the terminal UI; `--no-interactive` prints plain lines. */
+  readonly interactive: boolean
+  /** Extra diagnostics on stderr. */
+  readonly verbose: boolean
+}
+
+/** How to choose the session this invocation drives. */
+export type CliResumeChoice = 'latest' | 'fresh' | {
+  /** The exact persisted session id to resume. */
+  sessionId: string
+}
+
+/** A permission preset the CLI exposes; maps onto sandbox + approval policy. */
+export type CliPermission = 'read-only' | 'workspace-write' | 'danger-full-access'
+```
+
+来源：[`packages/bundle/cli/src/index.ts:43`](../packages/bundle/cli/src/index.ts)
+
 <a id="deepseek-aidsh-client-connection"></a>
 
 ## `@deepseek-ai/dsh-client-connection`
@@ -3123,6 +3164,7 @@ export interface Config {
 - `@deepseek-ai/dsh-atomic-write`（[`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts)）
 - `@deepseek-ai/dsh-base`（[`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts)）
 - `@deepseek-ai/dsh-brand`（[`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts)）
+- `@deepseek-ai/dsh-cli-ui`（[`packages/ui/cli/src/index.ts`](../packages/ui/cli/src/index.ts)）
 - `@deepseek-ai/dsh-client-schema-form`（[`packages/client/schema-form/src/index.ts`](../packages/client/schema-form/src/index.ts)）
 - `@deepseek-ai/dsh-client-test-runtime`（[`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-attachment`（[`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts)）

@@ -21,13 +21,16 @@ function exitCode(argv: string[]): number {
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseDshArgs', () => {
-  it('routes profile boots and the web alias, handing the rest to the app', () => {
+  it('routes profile boots and the web/cli aliases, handing the rest to the app', () => {
     expect(parse(['--profile', 'tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--patch', 'b.yml']))
       .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [] })
     expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'web', patches: [], args: [] })
     expect(parse(['web', '--patch', 'web.yml']))
       .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [] })
+    expect(parse(['cli'])).toEqual({ mode: 'profile', profile: 'cli', patches: [], args: [] })
+    expect(parse(['cli', '--resume', 'fresh']))
+      .toEqual({ mode: 'profile', profile: 'cli', patches: [], args: ['--resume', 'fresh'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {

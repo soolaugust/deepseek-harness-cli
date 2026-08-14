@@ -1,0 +1,72 @@
+/**
+ * The ink application root: a Claude Code-style layout — the conversation
+ * scrolls in the flexible top region, a status line and the round-bordered
+ * prompt input stay fixed at the bottom.
+ * @module @deepseek-ai/dsh-cli-ui/app
+ */
+
+import * as React from 'react'
+import { Box, Text as InkText, useInput } from 'ink'
+import { useCliView, type CliViewStoreLike } from './hooks/use-cli-view.ts'
+import { isCancelKey, isExitKey } from './keys.ts'
+import { ScrollRegion } from './scroll-region.tsx'
+import { StatusBar } from './status-bar.tsx'
+import { CliTextInput } from './text-input.tsx'
+
+/** The props the io wires from the driver's view store and interaction hooks. */
+export interface CliAppProps {
+  /** The driver-owned view store. */
+  store: CliViewStoreLike
+  /** Submit one input line to the driver. */
+  onSubmit(this: void, line: string): void
+  /** Cancel the in-flight turn (Ctrl+C while busy). */
+  onCtrlC(this: void): void
+  /** Request a clean exit (Ctrl+C at the prompt, or Ctrl+D). */
+  onExit(this: void): void
+  /** Up-arrow history navigation. */
+  onHistoryUp?(this: void, current: string): string | undefined
+  /** Down-arrow history navigation. */
+  onHistoryDown?(this: void, current: string): string | undefined
+}
+
+/** The assembled terminal UI. */
+export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistoryDown }: CliAppProps) {
+  const view = useCliView(store)
+  const [input, setInput] = React.useState('')
+  useInput((inputChar, key) => {
+    // Ctrl+C / Ctrl+D are handled here; printable input belongs to the
+    // text input, which also owns the prompt focus.
+    if (isCancelKey(inputChar, key)) {
+      if (view.busy) onCtrlC()
+      else onExit()
+    } else if (isExitKey(inputChar, key)) {
+      onExit()
+    }
+  })
+  return (
+    <Box flexDirection="column">
+      <ScrollRegion view={view} />
+      <StatusBar view={view} />
+      <Box
+        flexDirection="row"
+        alignItems="flex-start"
+        borderStyle="round"
+        borderColor={view.busy ? 'yellow' : 'gray'}
+        borderLeft={false}
+        borderRight={false}
+        borderBottom
+      >
+        <InkText color={view.busy ? 'yellow' : 'green'}>{view.busy ? '…' : '❯'} </InkText>
+        <Box flexGrow={1}>
+          <CliTextInput
+            value={input}
+            onChange={setInput}
+            onSubmit={(line) => { onSubmit(line); setInput('') }}
+            {...(onHistoryUp === undefined ? {} : { onHistoryUp })}
+            {...(onHistoryDown === undefined ? {} : { onHistoryDown })}
+          />
+        </Box>
+      </Box>
+    </Box>
+  )
+}

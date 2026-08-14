@@ -24,6 +24,7 @@ agent 可以读取和编辑工作区文件、运行命令、委派工作并维�
 
 ## 继续使用
 
+- [使用交互式终端 CLI](./cli.md)
 - [配置模型](./providers.md)
 - [使用 Python SDK](./python-sdk.md)
 - [使用其他 CLI 模式](../../../apps/cli/README.md)

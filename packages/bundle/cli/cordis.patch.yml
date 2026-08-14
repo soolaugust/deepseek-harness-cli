@@ -1,0 +1,44 @@
+# The dsh-cli bundle patch: interactive terminal mode directly over dsh-base.
+# It mounts no Host, HTTP server, Web runtime, or browser plugin. A provider
+# plugin injects `cmdlineArgs`, parses the CLI flags (`dsh cli --resume fresh
+# --model deepseek-v4-flash`), then the direct driver creates or resumes an
+# Agent through the core registry and drives the REPL to the user's `/exit`.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+
+# The shared module-reload HMR row stays off; the launcher's watch-only
+# fallback still keeps the user patch layers live until the run exits.
+- id: hmr
+  disabled: true
+
+- id: tools
+  config:
+    # Keep the same temporary process-wide Code Mode opt-in as the Web surface.
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+# The interactive approval stance follows the CLI's --permission flag:
+# danger-full-access disables prompting (sandbox already opens the gates), the
+# other presets ask, and the cli approval answerer (rendered in the TUI) grants
+# each asked action once with an on-screen notice.
+- id: approval
+  inject: [cliStartup]
+  config:
+    policy: !!js "(ctx.cliStartup?.permission ?? 'workspace-write') === 'danger-full-access' ? 'never' : 'ask'"
+
+- insert:
+    # Code Mode is a core execution capability, not a Web component.
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    - id: cli-startup
+      name: '@deepseek-ai/dsh-cli/startup'
+
+    # Reads its invocation from the ordinary cliStartup provider.
+    - id: cli-runner
+      name: '@deepseek-ai/dsh-cli'
+      inject: [cliStartup]
+      config:
+        startup: !!js ctx.cliStartup

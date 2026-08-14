@@ -1,0 +1,32 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    // Classic JSX: source-launch tsx (dsh cli) compiles .tsx with esbuild's
+    // default React.createElement, so components import React explicitly and
+    // the built lib matches. Client packages keep react-jsx under their own
+    // tsconfigs; the terminal UI is the one JSX surface that runs in Node.
+    "jsx": "react",
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
+    }
+  ]
+}
