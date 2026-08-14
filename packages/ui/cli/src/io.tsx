@@ -70,6 +70,12 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
       {...(options.onCyclePermission === undefined ? {} : { onCyclePermission: options.onCyclePermission })}
     />,
   )
+  // ink arms raw mode when the input hook mounts; re-arm explicitly so the
+  // first keypress after a watch-restart is parsed as a key, not a raw escape
+  // sequence (otherwise an early Up becomes the literal "^[[A").
+  if (process.stdin.isTTY) {
+    try { process.stdin.setRawMode(true) } catch { /* non-tty stdin */ }
+  }
   return {
     nextLine: () => {
       if (disposed) return Promise.resolve(null)
