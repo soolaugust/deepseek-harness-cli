@@ -36,16 +36,20 @@ export interface InteractiveIoOptions {
  */
 export function createInteractiveIo(options: InteractiveIoOptions): InteractiveIo {
   let pending: ((line: string | null) => void) | null = null
+  // Buffered submitted lines: a prompt typed while the agent is busy waits
+  // here (runRepl is blocked on whenIdle and has no nextLine outstanding),
+  // instead of being dropped as "no reaction".
+  const buffer: string[] = []
   let disposed = false
-  // Resolve the driver's pending line read; a null line is the EOF/exit signal
-  // that lets the REPL loop wind down cleanly. The ink tree alone consumes
-  // stdin: any extra 'readable' listener would compete for the same stream and
-  // starve ink's keypress handling.
+  // The ink tree alone consumes stdin: any extra 'readable' listener would
+  // compete for the same stream and starve ink's keypress handling.
   const resolveNext = (line: string | null): void => {
     if (pending !== null) {
       const resolve = pending
       pending = null
       resolve(line)
+    } else if (line !== null) {
+      buffer.push(line)
     }
   }
   const instance = render(
@@ -62,6 +66,8 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
     nextLine: () => {
       if (disposed) return Promise.resolve(null)
       if (pending !== null) return Promise.reject(new Error('cli-ui: concurrent nextLine'))
+      const buffered = buffer.shift()
+      if (buffered !== undefined) return Promise.resolve(buffered)
       return new Promise<string | null>((resolve) => { pending = resolve })
     },
     dispose: () => {

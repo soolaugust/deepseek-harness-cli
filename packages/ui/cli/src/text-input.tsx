@@ -124,11 +124,17 @@ export function CliTextInput({ value, onChange, onSubmit, onHistoryUp, onHistory
   const [offset, setOffset] = React.useState(value.length)
   // Keep the cursor at the end when the value changes externally.
   React.useEffect(() => { setOffset(value.length) }, [value])
+  // Synchronous mirrors of value/offset so rapid consecutive keystrokes fold
+  // against the latest state instead of a stale render closure.
+  const valueRef = React.useRef(value)
+  const offsetRef = React.useRef(value.length)
+  React.useEffect(() => { valueRef.current = value })
+  React.useEffect(() => { offsetRef.current = offset })
 
   useInput((rawInput, key) => {
-    const edit = applyKeypress(rawInput, key, value, offset, onHistoryUp, onHistoryDown)
-    if (edit.value !== undefined) onChange(edit.value)
-    if (edit.offset !== undefined) setOffset(edit.offset)
+    const edit = applyKeypress(rawInput, key, valueRef.current, offsetRef.current, onHistoryUp, onHistoryDown)
+    if (edit.value !== undefined) { valueRef.current = edit.value; onChange(edit.value) }
+    if (edit.offset !== undefined) { offsetRef.current = edit.offset; setOffset(edit.offset) }
     if (edit.submit !== undefined) onSubmit(edit.submit)
   }, { isActive: focus })
 
