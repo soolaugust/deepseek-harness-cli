@@ -8,6 +8,7 @@
 import * as React from 'react'
 import { Box, Text, useStdout } from 'ink'
 import type { CliViewItem, CliViewState } from './types.ts'
+import { markdownToInk } from './markdown.tsx'
 import { ToolCard } from './tool-cards.tsx'
 
 /** Render one conversation item to terminal text. */
@@ -16,7 +17,12 @@ export function renderItem(item: CliViewItem, key: number) {
     case 'user':
       return <Text key={key} color="cyan">{'> '}{item.text}</Text>
     case 'assistant':
-      return <Text key={key}>{item.text}</Text>
+      // Streamed text renders as-is (markdown is still forming); a committed
+      // message gets the markdown → ink pass so bold, code, lists, and
+      // headings show in the terminal like Claude Code.
+      return item.streaming
+        ? <Text key={key}>{item.text}</Text>
+        : <Box key={key} flexDirection="column">{markdownToInk(item.text)}</Box>
     case 'tool':
       return <ToolCard key={key} item={item} />
     case 'notice':
