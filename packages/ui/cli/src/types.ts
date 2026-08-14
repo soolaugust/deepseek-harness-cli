@@ -13,6 +13,28 @@ export type CliViewItem =
   | { kind: 'notice'; text: string }
   | { kind: 'divider' }
 
+/** Whole-session statistics the status line renders (mirrors web stats). */
+export interface CliStats {
+  /** Distinct turns that carried at least one closed step. */
+  readonly turns: number
+  /** Closed steps. */
+  readonly steps: number
+  /** Summed model wall time, ms. */
+  readonly llmMs: number
+  /** Summed tool call→result wall time, ms. */
+  readonly toolMs: number
+  /** Summed first-token latency over the counted steps, ms. */
+  readonly ttftMs: number
+  /** Steps with a recorded first token. */
+  readonly ttftSteps: number
+  /** Summed provider input tokens (uncached). */
+  readonly inputTokens: number
+  /** Summed provider cache-read tokens. */
+  readonly cacheReadTokens: number
+  /** Summed provider output tokens. */
+  readonly outputTokens: number
+}
+
 /** Immutable snapshot of everything the terminal shows. */
 export interface CliViewState {
   /** Rendered conversation items in arrival order. */
@@ -21,4 +43,6 @@ export interface CliViewState {
   readonly busy: boolean
   /** The live session id this view belongs to. */
   readonly sessionId: string
+  /** Whole-session statistics for the status line. */
+  readonly stats: CliStats
 }

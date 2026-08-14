@@ -12,15 +12,20 @@ function fixedStore(state: CliViewState): CliViewStoreLike {
   return { getSnapshot: () => state, subscribe: () => () => {} }
 }
 
-function renderApp(state: CliViewState) {
+const ZERO_STATS: CliViewState['stats'] = {
+  turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0,
+  inputTokens: 0, cacheReadTokens: 0, outputTokens: 0,
+}
+
+function renderApp(state: Partial<CliViewState>) {
   return render(
-    <CliApp store={fixedStore(state)} onSubmit={() => {}} onCtrlC={() => {}} onExit={() => {}} />,
+    <CliApp store={fixedStore({ items: [], busy: false, sessionId: '', stats: ZERO_STATS, ...state })} onSubmit={() => {}} onCtrlC={() => {}} onExit={() => {}} />,
   )
 }
 
 describe('CliApp', () => {
   it('renders the empty state with a hint and the idle status', () => {
-    const { lastFrame } = renderApp({ items: [], busy: false, sessionId: '' })
+    const { lastFrame } = renderApp({})
     expect(lastFrame()).toContain('No messages yet')
     expect(lastFrame()).toContain('idle')
   })

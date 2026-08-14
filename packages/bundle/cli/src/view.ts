@@ -29,7 +29,100 @@ export interface CliViewStore {
  * @returns an empty, not-busy view with no session id.
  */
 export function initialViewState(): CliViewState {
-  return { items: [], busy: false, sessionId: '' }
+  return {
+    items: [],
+    busy: false,
+    sessionId: '',
+    stats: { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0 },
+  }
+}
+
+/** Internal stats fold state carried on the view snapshot. */
+interface StatsState {
+  turns: number
+  steps: number
+  llmMs: number
+  toolMs: number
+  ttftMs: number
+  ttftSteps: number
+  inputTokens: number
+  cacheReadTokens: number
+  outputTokens: number
+  /** The open step's start time; null outside a step. */
+  stepStart: number | null
+  /** First-token time of the open step; null before the first delta. */
+  firstToken: number | null
+  /** Dispatch times of in-flight tool calls, by callId. */
+  pendingCalls: Record<string, number>
+}
+
+const ZERO_STATS: StatsState = {
+  turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0,
+  inputTokens: 0, cacheReadTokens: 0, outputTokens: 0,
+  stepStart: null, firstToken: null, pendingCalls: {},
+}
+
+/** Fold a step lifecycle event onto the stats accumulator. */
+function foldStats(stats: StatsState, event: SessionEvent): StatsState {
+  switch (event.type) {
+    case 'step/start':
+      return { ...stats, stepStart: event.time, firstToken: null }
+    case 'assistant/chunk': {
+      const chunk = event.data.chunk
+      if (stats.firstToken === null && chunk.type === 'text-delta') {
+        return { ...stats, firstToken: event.time }
+      }
+      return stats
+    }
+    case 'assistant/message': {
+      if (stats.stepStart === null) return stats
+      const llmMs = stats.llmMs + Math.max(0, event.time - stats.stepStart)
+      let next: StatsState = { ...stats, llmMs, stepStart: null }
+      if (stats.firstToken !== null) {
+        next = { ...next, ttftMs: next.ttftMs + Math.max(0, stats.firstToken - stats.stepStart), ttftSteps: next.ttftSteps + 1 }
+      }
+      const usage = event.data.usage
+      if (usage !== undefined) {
+        next = {
+          ...next,
+          inputTokens: next.inputTokens + usage.inputTokens,
+          cacheReadTokens: next.cacheReadTokens + (usage.cacheReadTokens ?? 0),
+          outputTokens: next.outputTokens + usage.outputTokens,
+        }
+      }
+      return next
+    }
+    case 'tool/call':
+      return { ...stats, pendingCalls: { ...stats.pendingCalls, [event.data.callId]: event.time } }
+    case 'tool/result': {
+      const callId = event.data.message.source.callId
+      const dispatched = Object.hasOwn(stats.pendingCalls, callId) ? stats.pendingCalls[callId] : undefined
+      if (dispatched === undefined) return stats
+      const pendingCalls = Object.fromEntries(Object.entries(stats.pendingCalls).filter(([id]) => id !== callId))
+      return { ...stats, toolMs: stats.toolMs + Math.max(0, event.time - dispatched), pendingCalls }
+    }
+    case 'step/end':
+      return { ...stats, steps: stats.steps + 1, stepStart: null, firstToken: null }
+    case 'turn/start':
+      return { ...stats, turns: stats.turns + 1 }
+    default:
+      return stats
+  }
+}
+
+/** Project the internal stats accumulator onto the public snapshot. */
+function projectStats(stats: StatsState): CliViewState['stats'] {
+  return {
+    turns: stats.turns,
+    steps: stats.steps,
+    llmMs: stats.llmMs,
+    toolMs: stats.toolMs,
+    ttftMs: stats.ttftMs,
+    ttftSteps: stats.ttftSteps,
+    inputTokens: stats.inputTokens,
+    cacheReadTokens: stats.cacheReadTokens,
+    outputTokens: stats.outputTokens,
+  }
 }
 
 /** Extract the plain text of a user message, mirroring headless summarize. */
@@ -126,6 +219,9 @@ export function reduceView(state: CliViewState, event: SessionEvent): CliViewSta
  */
 export function createViewStore(): CliViewStore {
   let state: CliViewState = initialViewState()
+  // Stats accumulate across events (open step, first token, pending tool
+  // calls) outside the immutable snapshot; each append folds and projects.
+  let stats: StatsState = { ...ZERO_STATS }
   const listeners = new Set<() => void>()
   const emit = (): void => { for (const fn of listeners) fn() }
   return {
@@ -135,7 +231,8 @@ export function createViewStore(): CliViewStore {
       return () => { listeners.delete(fn) }
     },
     append: (event, sessionId) => {
-      state = { ...reduceView(state, event), sessionId }
+      stats = foldStats(stats, event)
+      state = { ...reduceView(state, event), sessionId, stats: projectStats(stats) }
       emit()
     },
     notice: (text) => {
