@@ -26,8 +26,12 @@ function renderApp(state: Partial<CliViewState>) {
 describe('CliApp', () => {
   it('renders the empty state with a hint and the idle status', () => {
     const { lastFrame } = renderApp({})
-    expect(lastFrame()).toContain('No messages yet')
-    expect(lastFrame()).toContain('idle')
+    const frame = lastFrame() ?? ''
+    expect(frame).toContain('No messages yet')
+    expect(frame).toContain('idle')
+    // The session stats now render inside the input bar's right side.
+    expect(frame).toContain('0 轮 · 0 步')
+    expect(frame).toContain('输入 0 tok')
   })
 
   it('renders user, assistant, tool, and notice items with the session id', () => {

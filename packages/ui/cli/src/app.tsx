@@ -10,7 +10,7 @@ import { Box, Text as InkText, useInput } from 'ink'
 import { useCliView, type CliViewStoreLike } from './hooks/use-cli-view.ts'
 import { isCancelKey, isExitKey } from './keys.ts'
 import { ScrollRegion } from './scroll-region.tsx'
-import { PermissionBadge, StatusBar } from './status-bar.tsx'
+import { PermissionBadge, SessionStats, StatusBar } from './status-bar.tsx'
 import { CliTextInput } from './text-input.tsx'
 
 /** The props the io wires from the driver's view store and interaction hooks. */
@@ -53,7 +53,12 @@ export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistor
   return (
     <Box flexDirection="column">
       <ScrollRegion view={view} />
-      <StatusBar view={view} />
+      <Box flexShrink={0} flexDirection="row">
+        <Box flexGrow={1}>
+          <StatusBar view={view} />
+        </Box>
+        <SessionStats view={view} />
+      </Box>
       <Box
         flexShrink={0}
         flexDirection="row"
@@ -65,7 +70,7 @@ export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistor
         borderBottom
       >
         <InkText color={view.busy ? 'yellow' : 'green'}>{view.busy ? '…' : '❯'} </InkText>
-        <Box flexGrow={1}>
+        <Box flexGrow={1} flexShrink={1}>
           <CliTextInput
             value={input}
             onChange={setInput}

@@ -1,14 +1,23 @@
 /**
- * The status line and session stats bar: busy state, session id, and the
+ * The status line and session stats: busy state, session id, and the
  * whole-session figures the web surface renders — turn/step counts, LLM and
  * tool wall time, first-token latency, throughput, cache hit rate, and
- * input/output tokens.
+ * input/output tokens. The status line sits above the input bar (upper-left);
+ * the stats summary renders inside the input bar's right side.
  * @module @deepseek-ai/dsh-cli-ui/status-bar
  */
 
 import * as React from 'react'
-import { Box, Text } from 'ink'
+import { Box, Text, useStdout } from 'ink'
 import type { CliViewState } from './types.ts'
+
+/**
+ * Columns reserved on the stats row for the idle/session head to the strip's
+ * left: the `○ idle`/`● busy` prefix (6) plus two lead spaces, plus the
+ * strip's own left padding (1). The strip truncates rather than squeeze the
+ * head below this on narrow terminals.
+ */
+const STATS_HEAD_WIDTH = 9
 
 /** Format a millisecond span compactly (`2m8s`, `1.2s`, `300ms`). */
 function fmtMs(ms: number): string {
@@ -29,10 +38,37 @@ function fmtTokens(n: number): string {
 }
 
 /**
- * Render the bottom status line and the session stats bar.
- * @param view - the current view state with accumulated stats.
+ * Truncate a string to fit `max` display columns with a trailing `…`.
+ * CJK and other wide glyphs count as two columns; content longer than `max`
+ * returns a slice ending in `…` (the ellipsis replaces content, so the slice
+ * plus the ellipsis stays within `max` on the wide glyph that overflows).
+ * @param text - the text to cap.
+ * @param max - the maximum display width in columns.
+ * @returns text no wider than `max` columns.
  */
-export function StatusBar({ view }: { view: CliViewState }) {
+export function truncateToWidth(text: string, max: number): string {
+  if (max <= 0 || text === '') return ''
+  let cols = 0
+  let i = 0
+  for (const ch of text) {
+    // Wide glyphs render as two terminal columns.
+    const w = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u.test(ch) ? 2 : 1
+    if (cols + w > max) {
+      return i === text.length ? text : `${text.slice(0, i)}…`
+    }
+    cols += w
+    i += 1
+  }
+  return text
+}
+
+/**
+ * Build the pipe-separated whole-session stats summary shown on the input
+ * bar's right side.
+ * @param view - the current view state with accumulated stats.
+ * @returns the joined stats summary.
+ */
+export function statsSummary(view: CliViewState): string {
   const stats = view.stats
   // Average first-token latency over the steps that recorded one.
   const ttft = stats.ttftSteps > 0 ? fmtMs(stats.ttftMs / stats.ttftSteps) : '—'
@@ -50,15 +86,40 @@ export function StatusBar({ view }: { view: CliViewState }) {
     cachePct !== '' ? `缓存命中 ${cachePct}` : '',
     `输入 ${fmtTokens(billedInput)} tok · 输出 ${fmtTokens(stats.outputTokens)} tok`,
   ].filter(segment => segment !== '')
+  return segments.join(' | ')
+}
+
+/**
+ * Render the busy state and session id as the status line above the input
+ * bar, upper-left.
+ * @param view - the current view state.
+ */
+export function StatusBar({ view }: { view: CliViewState }) {
   return (
-    <Box flexShrink={0} flexDirection="column">
-      <Box>
-        <Text color={view.busy ? 'yellow' : 'green'}>
-          {view.busy ? '● busy' : '○ idle'}
-        </Text>
-        <Text dimColor>  {view.sessionId}</Text>
-      </Box>
-      <Text dimColor>{segments.join(' | ')}</Text>
+    <Box flexShrink={0}>
+      <Text color={view.busy ? 'yellow' : 'green'}>
+        {view.busy ? '● busy' : '○ idle'}
+      </Text>
+      <Text dimColor>  {view.sessionId}</Text>
+    </Box>
+  )
+}
+
+/**
+ * Render the whole-session stats summary on the upper-right line, above the
+ * input bar. Capped to a single line that never wraps: the strip is truncated
+ * with `…` only when it would run past the terminal's right edge.
+ * @param view - the current view state with accumulated stats.
+ */
+export function SessionStats({ view }: { view: CliViewState }) {
+  const { stdout } = useStdout()
+  const summary = statsSummary(view)
+  // Leave room for the idle/session head on the same line's left; the strip
+  // itself takes the rest of the row and truncates only at the right edge.
+  const max = (stdout.columns ?? 80) - STATS_HEAD_WIDTH
+  return (
+    <Box flexShrink={0} paddingLeft={1}>
+      <Text dimColor>{truncateToWidth(summary, max)}</Text>
     </Box>
   )
 }
