@@ -23,7 +23,7 @@ export function markdownToInk(content: string): React.ReactNode {
   const lines: React.ReactNode[] = []
   for (const token of tokens) {
     const rendered = formatBlock(token)
-    if (rendered !== null) lines.push(rendered)
+    if (rendered !== null) lines.push(<React.Fragment key={lines.length}>{rendered}</React.Fragment>)
   }
   return <Box flexDirection="column">{lines}</Box>
 }

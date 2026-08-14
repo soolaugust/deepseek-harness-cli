@@ -21,28 +21,28 @@ function isTool(item: CliViewItem): item is Extract<CliViewItem, { kind: 'tool' 
 }
 
 /** Render a non-tool conversation item. */
-function renderItem(item: CliViewItem) {
+function renderItem(item: CliViewItem, key: React.Key) {
   switch (item.kind) {
     case 'user':
-      return <Text color="cyan">{'> '}{item.text}</Text>
+      return <Text key={key} color="cyan">{'> '}{item.text}</Text>
     case 'assistant':
       // Streamed text renders as-is (markdown is still forming); a committed
       // message gets the markdown → ink pass so bold, code, lists, and
       // headings show in the terminal like Claude Code.
       return item.streaming
-        ? <Text>{item.text}</Text>
-        : <Box flexDirection="column">{markdownToInk(item.text)}</Box>
+        ? <Text key={key}>{item.text}</Text>
+        : <Box key={key} flexDirection="column">{markdownToInk(item.text)}</Box>
     case 'tool':
-      return <ToolCard item={item} />
+      return <ToolCard key={key} item={item} />
     case 'notice':
-      return <Text dimColor>{item.text}</Text>
+      return <Text key={key} dimColor>{item.text}</Text>
     case 'divider':
-      return <Text dimColor>{'─'.repeat(20)}</Text>
+      return <Text key={key} dimColor>{'─'.repeat(20)}</Text>
   }
 }
 
 /** Render a collapsed tool-run row, or its expanded tools. */
-function renderToolRow(row: ToolRow, expanded: boolean, key: number) {
+function renderToolRow(row: ToolRow, expanded: boolean, key: React.Key) {
   if (!expanded) {
     const names = [...new Set(row.tools.map(tool => tool.name))].join(', ')
     return (
@@ -109,10 +109,10 @@ export function ScrollRegion({ view }: { view: CliViewState }) {
       {folded.length === 0
         ? <Text dimColor>No messages yet — type a prompt below.</Text>
         : folded.map((row, index) => (
-          <Box key={index} flexDirection="column" marginBottom={1}>
+          <Box key={`row-${index}`} flexDirection="column" marginBottom={1}>
             {row.tools !== undefined
-              ? renderToolRow(row.tools, expandedRows[index] ?? false, index)
-              : renderItem(row.item as CliViewItem)}
+              ? renderToolRow(row.tools, expandedRows[index] ?? false, `tools-${index}`)
+              : renderItem(row.item as CliViewItem, `item-${index}`)}
           </Box>
         ))}
     </Box>
