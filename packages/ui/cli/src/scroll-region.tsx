@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text, useInput, useStdout } from 'ink'
 import type { CliViewItem, CliViewState } from './types.ts'
 import { markdownToInk } from './markdown.tsx'
 import { ToolCard } from './tool-cards.tsx'
@@ -87,9 +87,12 @@ function foldRows(items: readonly CliViewItem[]): Array<{ item?: CliViewItem; to
  * @param view - the current view state.
  */
 export function ScrollRegion({ view }: { view: CliViewState }) {
-  // Render every item; the flex column fills the space above the fixed status
-  // line and input bar, and ink scrolls the overflow rather than slicing a
-  // fixed window. Auto-stick to the newest messages by aligning to the bottom.
+  const { stdout } = useStdout()
+  // Fixed-height scroll window: the conversation occupies the terminal rows
+  // minus the status line, stats bar, and input bar, so a long transcript
+  // scrolls inside this region and the input stays pinned at the bottom.
+  const rows = stdout.rows && stdout.rows > 0 ? stdout.rows : 24
+  const height = Math.max(5, rows - 4)
   const folded = foldRows(view.items)
   // Track which tool rows are expanded; Ctrl+O toggles all.
   const [expandedRows, setExpandedRows] = React.useState<boolean[]>([])
@@ -104,17 +107,22 @@ export function ScrollRegion({ view }: { view: CliViewState }) {
       setExpandedRows(runs => runs.map(expanded => !expanded))
     }
   })
+  const offset = Math.max(0, folded.length - height)
+  const visible = folded.slice(offset)
   return (
-    <Box flexDirection="column" flexGrow={1} overflowY="hidden" justifyContent="flex-end">
-      {folded.length === 0
+    <Box flexDirection="column" height={height} overflowY="hidden" justifyContent="flex-end">
+      {visible.length === 0
         ? <Text dimColor>No messages yet — type a prompt below.</Text>
-        : folded.map((row, index) => (
-          <Box key={`row-${index}`} flexDirection="column" marginBottom={1}>
-            {row.tools !== undefined
-              ? renderToolRow(row.tools, expandedRows[index] ?? false, `tools-${index}`)
-              : renderItem(row.item as CliViewItem, `item-${index}`)}
-          </Box>
-        ))}
+        : visible.map((row, index) => {
+          const globalIndex = offset + index
+          return (
+            <Box key={`row-${globalIndex}`} flexDirection="column" marginBottom={1}>
+              {row.tools !== undefined
+                ? renderToolRow(row.tools, expandedRows[globalIndex] ?? false, `tools-${globalIndex}`)
+                : renderItem(row.item as CliViewItem, `item-${globalIndex}`)}
+            </Box>
+          )
+        })}
     </Box>
   )
 }
