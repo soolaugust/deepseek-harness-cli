@@ -51,6 +51,8 @@ export interface CliReplDeps {
    * success or null when the target does not exist / cannot resume.
    */
   switchSession?(target: string): Promise<Agent | null>
+  /** Record a submitted plain prompt in the durable input history. */
+  recordPrompt?(text: string): void
 }
 
 /**
@@ -68,6 +70,7 @@ export async function runRepl(deps: CliReplDeps): Promise<number> {
     const line = parseLine(raw)
     if (line.kind === 'empty') continue
     if (line.kind === 'prompt') {
+      deps.recordPrompt?.(line.text)
       agent.followup(createUserMessage({
         content: [{ type: 'text', text: line.text }],
         source: { kind: 'user' },

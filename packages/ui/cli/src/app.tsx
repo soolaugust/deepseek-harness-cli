@@ -48,6 +48,7 @@ export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistor
       <ScrollRegion view={view} />
       <StatusBar view={view} />
       <Box
+        flexShrink={0}
         flexDirection="row"
         alignItems="flex-start"
         borderStyle="round"

@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react'
-import { Box, Text, useInput, useStdout } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import type { CliViewItem, CliViewState } from './types.ts'
 import { markdownToInk } from './markdown.tsx'
 import { ToolCard } from './tool-cards.tsx'
@@ -87,10 +87,10 @@ function foldRows(items: readonly CliViewItem[]): Array<{ item?: CliViewItem; to
  * @param view - the current view state.
  */
 export function ScrollRegion({ view }: { view: CliViewState }) {
-  const { stdout } = useStdout()
-  const rows = stdout.rows && stdout.rows > 0 ? stdout.rows : 24
-  const visible = view.items.slice(-Math.max(5, rows - 4))
-  const folded = foldRows(visible)
+  // Render every item; the flex column fills the space above the fixed status
+  // line and input bar, and ink scrolls the overflow rather than slicing a
+  // fixed window. Auto-stick to the newest messages by aligning to the bottom.
+  const folded = foldRows(view.items)
   // Track which tool rows are expanded; Ctrl+O toggles all.
   const [expandedRows, setExpandedRows] = React.useState<boolean[]>([])
   React.useEffect(() => {
@@ -105,7 +105,7 @@ export function ScrollRegion({ view }: { view: CliViewState }) {
     }
   })
   return (
-    <Box flexDirection="column" flexGrow={1} overflowY="hidden">
+    <Box flexDirection="column" flexGrow={1} overflowY="hidden" justifyContent="flex-end">
       {folded.length === 0
         ? <Text dimColor>No messages yet — type a prompt below.</Text>
         : folded.map((row, index) => (

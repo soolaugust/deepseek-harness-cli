@@ -9,7 +9,10 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
@@ -60,6 +63,41 @@ export const Config: z<Config> = z.object({
 /** The minimum persistence surface the latest-session probe needs. */
 interface PersistenceLister {
   list(signal?: AbortSignal): Promise<readonly { id: SessionId; cwd?: string; createdAt: number }[]>
+}
+
+/** The maximum number of prompt-history lines kept on disk. */
+const MAX_HISTORY_LINES = 200
+
+/**
+ * Load the durable prompt history (one line per prompt).
+ * @param file - the history file path.
+ * @returns the prompts in oldest-first order; missing files yield an empty list.
+ */
+function loadHistory(file: string): string[] {
+  try {
+    const text = readFileSync(file, 'utf8')
+    return text.split('\n').filter(line => line.trim() !== '')
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Append one prompt to the durable history, trimming to the cap.
+ * @param file - the history file path.
+ * @param line - the submitted prompt.
+ */
+function appendHistory(file: string, line: string): void {
+  try {
+    const existing = loadHistory(file)
+    appendFileSync(file, `${line}\n`)
+    if (existing.length >= MAX_HISTORY_LINES) {
+      const trimmed = [...existing, line].slice(-MAX_HISTORY_LINES)
+      writeFileSync(file, `${trimmed.join('\n')}\n`)
+    }
+  } catch {
+    // Durable history is best-effort; a read-only home must not block the session.
+  }
 }
 
 /** Map a view item to one plain terminal line. */
@@ -186,19 +224,21 @@ async function run(
   // spawns, so ink's keypress parser sees whole lines instead of keypresses.
   const view = createViewStore()
   let currentHandle: AgentHandle | undefined
-  // Submitted prompt history for up/down navigation in the input.
-  const promptHistory: string[] = []
-  let historyIndex = -1
+  // Submitted prompt history for up/down navigation. Loaded from the durable
+  // CLI history file so a new session (or a new dialog in the same cwd) can
+  // arrow up to prompts from previous sessions.
+  const historyFile = join(resolveDshHome(), 'cli-history.txt')
+  const promptHistory: string[] = loadHistory(historyFile)
+  let historyIndex = promptHistory.length
   const io = startup.interactive
     ? createInteractiveIo({
       view,
       onCancel: () => { currentHandle?.agent.cancel({ kind: 'user' }) },
       onExit: () => {},
       onHistoryUp: (current) => {
-        if (historyIndex === -1 && current.trim() !== '') {
+        if (historyIndex === promptHistory.length && current.trim() !== '') {
           // Save the in-progress draft so down returns to it.
           promptHistory.push(current)
-          historyIndex = promptHistory.length - 1
         }
         if (historyIndex > 0) {
           historyIndex -= 1
@@ -212,10 +252,6 @@ async function run(
           return promptHistory[historyIndex]
         }
         return undefined
-      },
-      onLineSubmitted: (line) => {
-        if (line.trim() !== '' && promptHistory.at(-1) !== line) promptHistory.push(line)
-        historyIndex = promptHistory.length
       },
     })
     : createPlainIo(view, false)
@@ -353,6 +389,13 @@ async function run(
     listSessions,
     switchSession,
     commands,
+    recordPrompt: (text) => {
+      if (text.trim() !== '' && promptHistory.at(-1) !== text) {
+        promptHistory.push(text)
+        appendHistory(historyFile, text)
+      }
+      historyIndex = promptHistory.length
+    },
   })
   io.dispose()
   unsubEvent()

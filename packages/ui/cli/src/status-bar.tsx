@@ -10,7 +10,7 @@ import type { CliViewState } from './types.ts'
 /** Render the bottom status line above the input bar. */
 export function StatusBar({ view }: { view: CliViewState }) {
   return (
-    <Box>
+    <Box flexShrink={0}>
       <Text color={view.busy ? 'yellow' : 'green'}>
         {view.busy ? '● busy' : '○ idle'}
       </Text>

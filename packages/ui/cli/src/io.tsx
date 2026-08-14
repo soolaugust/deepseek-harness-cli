@@ -27,8 +27,6 @@ export interface InteractiveIoOptions {
   onHistoryUp?(this: void, current: string): string | undefined
   /** Down-arrow history navigation. */
   onHistoryDown?(this: void, current: string): string | undefined
-  /** Called after a line is submitted, so the driver can record history. */
-  onLineSubmitted?(this: void, line: string): void
 }
 
 /**
@@ -44,7 +42,6 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
   // stdin: any extra 'readable' listener would compete for the same stream and
   // starve ink's keypress handling.
   const resolveNext = (line: string | null): void => {
-    if (line !== null) options.onLineSubmitted?.(line)
     if (pending !== null) {
       const resolve = pending
       pending = null

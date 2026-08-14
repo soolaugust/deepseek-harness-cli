@@ -18,6 +18,9 @@
       "path": "../../../vendor/schemastery"
     },
     {
+      "path": "../../util/home-paths"
+    },
+    {
       "path": "../../core/agent"
     },
     {
