@@ -68,6 +68,10 @@ export function reduceView(state: CliViewState, event: SessionEvent): CliViewSta
       return { ...state, busy: false }
     }
     case 'user/message':
+      // Only surface direct human prompts. Injected context (AGENTS.md,
+      // skill content, goal notifications) rides the same user/message event
+      // with a non-'user' source kind and would clutter the transcript.
+      if (event.data.source.kind !== 'user') return state
       return { ...state, items: [...state.items, { kind: 'user', text: userText(event) }] }
     case 'assistant/chunk': {
       const chunk = event.data.chunk
