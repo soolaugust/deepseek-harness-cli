@@ -50,9 +50,6 @@ export function StatusBar({ view }: { view: CliViewState }) {
     cachePct !== '' ? `缓存命中 ${cachePct}` : '',
     `输入 ${fmtTokens(billedInput)} tok · 输出 ${fmtTokens(stats.outputTokens)} tok`,
   ].filter(segment => segment !== '')
-  const badge = view.permission === 'danger-full-access'
-    ? '⏵⏵ bypass permissions on (shift+tab to cycle)'
-    : `⏵⏵ ${view.permission} on (shift+tab to cycle)`
   return (
     <Box flexShrink={0} flexDirection="column">
       <Box>
@@ -62,7 +59,23 @@ export function StatusBar({ view }: { view: CliViewState }) {
         <Text dimColor>  {view.sessionId}</Text>
       </Box>
       <Text dimColor>{segments.join(' | ')}</Text>
-      <Text {...(view.permission === 'danger-full-access' ? { color: 'yellow' } : { dimColor: true })}>{badge}</Text>
+    </Box>
+  )
+}
+
+/**
+ * The permission badge rendered under the input bar, compact like Claude Code.
+ * @param view - the current view state carrying the active preset.
+ */
+export function PermissionBadge({ view }: { view: CliViewState }) {
+  const label = view.permission === 'danger-full-access'
+    ? 'bypass permissions on'
+    : `${view.permission} on`
+  return (
+    <Box flexShrink={0} paddingLeft={1}>
+      <Text {...(view.permission === 'danger-full-access' ? { color: 'yellow' } : { dimColor: true })}>
+        ⏵⏵ {label} <Text dimColor>(shift+tab to cycle)</Text>
+      </Text>
     </Box>
   )
 }

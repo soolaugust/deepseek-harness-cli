@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { describe, expect, it } from 'vitest'
 import { render } from 'ink-testing-library'
-import { StatusBar } from '../src/status-bar.tsx'
+import { PermissionBadge, StatusBar } from '../src/status-bar.tsx'
 import type { CliViewState } from '../src/types.ts'
 
 function frame(partial: Partial<CliViewState>): string {
@@ -43,12 +43,14 @@ describe('StatusBar', () => {
   })
 
   it('renders the permission badge with the cycle hint', () => {
-    const out = frame({ permission: 'workspace-write' })
-    expect(out).toContain('⏵⏵ workspace-write on (shift+tab to cycle)')
+    const view = { items: [], busy: false, sessionId: 's', stats: { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, permission: 'workspace-write' }
+    const { lastFrame } = render(<PermissionBadge view={view} />)
+    expect(lastFrame()).toContain('⏵⏵ workspace-write on (shift+tab to cycle)')
   })
 
   it('labels the full-access preset as bypass permissions', () => {
-    const out = frame({ permission: 'danger-full-access' })
-    expect(out).toContain('⏵⏵ bypass permissions on (shift+tab to cycle)')
+    const view = { items: [], busy: false, sessionId: 's', stats: { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0 }, permission: 'danger-full-access' }
+    const { lastFrame } = render(<PermissionBadge view={view} />)
+    expect(lastFrame()).toContain('⏵⏵ bypass permissions on (shift+tab to cycle)')
   })
 })
