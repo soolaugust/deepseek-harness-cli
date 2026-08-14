@@ -22,7 +22,7 @@
 要求 Node.js ≥ 22。
 
 ```sh
-# 从源码
+# from source
 git clone https://github.com/soolaugust/deepseek-harness-cli.git
 cd deepseek-harness-cli
 pnpm install
@@ -58,9 +58,9 @@ npx @deepseek-ai/dsh cli
 ## 开发
 
 ```sh
-pnpm dsh:dev          # 改源码自动重启（热加载开发）
-pnpm run test         # 单元测试
-pnpm run typecheck    # 类型检查
+pnpm dsh:dev          # auto-restart on source changes (hot-reload development)
+pnpm run test         # unit tests
+pnpm run typecheck    # type checks
 ```
 
 ## 继承自 DeepSeek Harness

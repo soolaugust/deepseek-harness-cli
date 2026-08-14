@@ -1,28 +1,28 @@
-# dsh cli — 交互式终端 Agent
+# dsh cli — interactive terminal agent
 
 English | [中文](README.zh.md)
 
-`dsh cli` 是一个**交互式终端 agent**，fork 自 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 并聚焦于 CLI 使用：在终端里获得像 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 那样的编码体验——全屏 UI、流式输出、工具卡、会话历史、权限控制，而无需浏览器。
+`dsh cli` is an **interactive terminal agent**, forked from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) with a CLI focus: a [Claude Code](https://docs.anthropic.com/en/docs/claude-code)-style coding experience in your terminal — full-screen UI, streaming output, tool cards, session history, and permission controls, with no browser needed.
 
-底层是 DeepSeek Harness 的插件架构（[everything is a plugin](https://github.com/cordiverse/cordis)），但此仓库只关注并打磨 `dsh cli` 这一条交互链路。
+Under the hood it is DeepSeek Harness's plugin architecture ([everything is a plugin](https://github.com/cordiverse/cordis)), but this repository only cares about and polishes the single `dsh cli` interaction path.
 
-## 特性
+## Features
 
-- **Claude Code 式交互**：全屏 alternate screen、输入框固定底部、上下箭头历史导航（含跨会话持久历史）
-- **Markdown 终端渲染**：粗体、斜体、代码、列表、标题按终端样式显示
-- **工具卡折叠**：相邻工具调用合并为一行，`Ctrl+O` 展开
-- **会话统计栏**：轮/步、LLM 耗时、首 token 延迟、吞吐、缓存命中率、输入/输出 tokens
-- **权限徽章**：`Shift+Tab` 循环 `read-only → workspace-write → danger-full-access`，`danger-full-access` 显示 "bypass permissions"
-- **自定义 provider**：指向任意 OpenAI 兼容端点（如 mify），模型路由与 `web_search` 均可配置
-- **会话恢复**：重开 `dsh cli` 续上次会话，`/session` 切换
-- **热加载开发**：`pnpm dsh:dev`（node --watch）改源码自动重启
+- **Claude Code-style interaction**: full-screen alternate screen, input bar pinned to the bottom, up/down arrow history navigation (including cross-session persistent history)
+- **Markdown terminal rendering**: bold, italic, code, lists, and headings rendered with terminal styles
+- **Tool card folding**: adjacent tool calls merge into one line, expand with `Ctrl+O`
+- **Session stats bar**: turns/steps, LLM time, first-token latency, throughput, cache hit rate, input/output tokens
+- **Permission badge**: `Shift+Tab` cycles `read-only → workspace-write → danger-full-access`, with `danger-full-access` shown as "bypass permissions"
+- **Custom provider**: point to any OpenAI-compatible endpoint (e.g. mify), with both model routing and `web_search` configurable
+- **Session resume**: reopening `dsh cli` continues the last session, switch with `/session`
+- **Hot-reload development**: `pnpm dsh:dev` (node --watch) auto-restarts on source changes
 
-## 快速开始
+## Quick start
 
-要求 Node.js ≥ 22。
+Requires Node.js ≥ 22.
 
 ```sh
-# 从源码
+# from source
 git clone https://github.com/soolaugust/deepseek-harness-cli.git
 cd deepseek-harness-cli
 pnpm install
@@ -30,42 +30,42 @@ pnpm run build
 pnpm dsh cli
 ```
 
-从 npm：
+From npm:
 
 ```sh
 npx @deepseek-ai/dsh cli
 ```
 
-首次启动会创建/恢复一个会话；输入文字回车发送，模型输出流式渲染在输入框上方。
+The first launch creates/resumes a session; type text and press Enter to send, and model output renders streaming above the input bar.
 
-## 使用
+## Usage
 
-| 操作 | 效果 |
+| Action | Effect |
 | --- | --- |
-| 输入文字 + `Enter` | 发送给 agent |
-| `↑` / `↓` | 历史导航（跨会话持久） |
-| `Shift+Tab` | 循环权限 preset |
-| `Ctrl+O` | 展开/收起工具组 |
-| `Ctrl+C` | 运行中取消当前回合；提示符下退出 |
-| `/exit` `/help` `/clear` `/session` `/model` `/permission` | slash 命令 |
+| Type text + `Enter` | Send to the agent |
+| `↑` / `↓` | History navigation (cross-session persistent) |
+| `Shift+Tab` | Cycle permission preset |
+| `Ctrl+O` | Expand/collapse tool group |
+| `Ctrl+C` | Cancel current turn while running; quit at the prompt |
+| `/exit` `/help` `/clear` `/session` `/model` `/permission` | Slash commands |
 
-完整说明见 [CLI 指南](docs/user/guide/cli.md)。
+Full instructions in the [CLI guide](docs/user/guide/cli.md).
 
-## 配置自定义 provider
+## Configuring a custom provider
 
-通过 `~/.dsh/settings.yaml` 指向任意 OpenAI 兼容端点（如 mify、OpenRouter），模型路由和 `web_search` 均可配置。详见 [CLI 指南 · 使用自定义模型提供方](docs/user/guide/cli.md#use-a-custom-model-provider)。
+Point `~/.dsh/settings.yaml` at any OpenAI-compatible endpoint (e.g. mify, OpenRouter); both model routing and `web_search` are configurable. See [CLI guide · Using a custom model provider](docs/user/guide/cli.md#use-a-custom-model-provider).
 
-## 开发
+## Development
 
 ```sh
-pnpm dsh:dev          # 改源码自动重启（热加载开发）
-pnpm run test         # 单元测试
-pnpm run typecheck    # 类型检查
+pnpm dsh:dev          # auto-restart on source changes (hot-reload development)
+pnpm run test         # unit tests
+pnpm run typecheck    # type checks
 ```
 
-## 继承自 DeepSeek Harness
+## Inherited from DeepSeek Harness
 
-此仓库是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的一个 fork，聚焦于其 `dsh cli` 交互式终端能力。完整的多 profile 架构、Web UI、SDK 等仍在 [上游仓库](https://github.com/deepseek-ai/deepseek-harness)。
+This repository is a fork of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) focused on its `dsh cli` interactive terminal capability. The full multi-profile architecture, Web UI, SDK, and more remain in the [upstream repository](https://github.com/deepseek-ai/deepseek-harness).
 
 ## License
 

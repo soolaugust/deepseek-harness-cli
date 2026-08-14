@@ -428,7 +428,7 @@ export type CliResumeChoice = 'latest' | 'fresh' | {
 export type CliPermission = 'read-only' | 'workspace-write' | 'danger-full-access'
 ```
 
-Source: [`packages/bundle/cli/src/index.ts:43`](../packages/bundle/cli/src/index.ts)
+Source: [`packages/bundle/cli/src/index.ts:49`](../packages/bundle/cli/src/index.ts)
 
 <a id="deepseek-aidsh-client-connection"></a>
 
