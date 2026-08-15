@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-15-cli-consumes-command-registry.md
-2026-08-15-cli-consumes-command-registry.md: 4b114cc877ab7acdb60771a3f4aae01401377d63
-2026-08-15-cli-consumes-command-registry.zh.md: ba4816c0557387d018cb9bd994867e994f4a27e0
+2026-08-15-cli-consumes-command-registry.md: 9053c13ac7be3e9b05246f19ef7ecc83b467a7fe
+2026-08-15-cli-consumes-command-registry.zh.md: e7e8732f05ed27304cef8ef603abcc93fd34365f

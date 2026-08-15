@@ -36,4 +36,4 @@ REPL 通过一个 fallback 槽位消费注册表，而不是再造一套自己�
 - CLI 用户现在能运行 `/compact`、`/goal`、`/feedback`、`/permission`，这些命令走与 web 适配器相同的 `command/run` / `command/done` 日志路径。
 - `/permission` 在所有地方含义统一：通过 `permission-presets` 做预设切换。
 - `/model` 真正切换会话模型，并停止往会话日志写入伪造的 `[system]` 消息；模型可见历史现在只反映真实用户输入。
-- 在 host 侧模型选择服务出现之前，`/model` 仍是驱动持有命令；通往该重构的路径写在了代码注释里，而非被隐藏。
+- `/model` 此后已通过 [agent-model-selection 服务](2026-08-15-agent-model-selection-service.md)迁入注册表，移除了驱动最后一条持有命令。

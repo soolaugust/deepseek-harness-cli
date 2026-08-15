@@ -15,8 +15,7 @@ import { createInterface } from 'node:readline'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { installModelSelection } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentHandle, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
@@ -28,6 +27,7 @@ import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-permission-presets'
+import type {} from '@deepseek-ai/dsh-agent-model-selection'
 // Empty type imports carry the loader Context merge for the settlement await
 // and the cmdline Context merge for the appExit host value.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -35,13 +35,13 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 import type { CliStartupValues } from './startup.ts'
 import { createViewStore } from './view.ts'
 import type { CliViewItem, CliViewStore } from './view.ts'
-import { runRepl, type CliReplDeps, type CliSessionRef } from './run.ts'
+import { runRepl, type CliSessionRef } from './run.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'cli-runner'
 
 /** Core services required before the interactive loop can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions']
+export const inject = ['agentDefaultModel', 'agentModelSelection', 'agents', 'sessions']
 
 /** Plugin config: the invocation resolved from this app's provider service. */
 export interface Config {
@@ -284,18 +284,20 @@ async function run(
   // non-null assertion.
   const agentsMaybe = ctx.get('agents')
   const defaultModelMaybe = ctx.get('agentDefaultModel')
+  const modelSelectionMaybe = ctx.get('agentModelSelection')
   const sessionsMaybe = ctx.get('sessions')
-  if (agentsMaybe === undefined || defaultModelMaybe === undefined || sessionsMaybe === undefined) return
+  if (agentsMaybe === undefined || defaultModelMaybe === undefined
+    || modelSelectionMaybe === undefined || sessionsMaybe === undefined) return
   const agents = agentsMaybe
   const defaultModel = defaultModelMaybe
+  const modelSelection = modelSelectionMaybe
   const sessions = sessionsMaybe
 
   const base = defaultModel.currentSelection()
   const agentOptions = { provider: startup.provider ?? base.provider, model: startup.model ?? base.model }
-  // Session-scoped model selection: /model updates `current` to switch this and
-  // any later-resumed agent; saveSelection persists it as the future default.
-  const selectionRef: ModelSelectionRef = { current: agentOptions, assembled: undefined }
-  const setup = (agentCtx: Context): void => { installModelSelection(agentCtx, selectionRef) }
+  // Install the session-scoped selection into every created/resumed/switched
+  // agent; the registry /model command switches it through agentModelSelection.
+  const setup = (agentCtx: Context): void => { modelSelection.install(agentCtx, agentOptions) }
 
   // Resolve which session to drive: explicit id, latest for this cwd, or fresh.
   let created: AgentHandle
@@ -331,25 +333,6 @@ async function run(
   let unsubEvent = ctx.on('session/event', onEvent)
   // The approval answerer grants each ask once and surfaces it in the view.
   const unsubApproval = installCliApproval(ctx, view)
-
-  // App slash commands the driver owns directly. /model stays here rather than
-  // in the command registry because it switches this session's live
-  // model-selection ref, which only the driver holds; every registry command
-  // (/permission, /compact, /goal, /feedback) routes through runCommand below.
-  const commands: Record<string, (args: string[], deps: CliReplDeps) => void | Promise<void>> = {
-    model: async (args) => {
-      const model = args[0]
-      const handle = currentHandle
-      if (model === undefined || handle === undefined) {
-        if (model === undefined) view.notice('/model <model> — e.g. deepseek-v4-flash')
-        return
-      }
-      const next = { provider: handle.agent.options.provider ?? base.provider, model }
-      selectionRef.current = next
-      await defaultModel.saveSelection(next)
-      view.notice(`model → ${model}`)
-    },
-  }
 
   // Switch the live agent to another saved session. Resume is attempted first
   // (leaving the current agent untouched on failure); only a successful resume
@@ -406,7 +389,6 @@ async function run(
     sessions,
     listSessions,
     switchSession,
-    commands,
     runCommand,
     recordPrompt: (text) => {
       if (text.trim() !== '' && promptHistory.at(-1) !== text) {

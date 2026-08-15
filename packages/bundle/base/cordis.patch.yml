@@ -66,6 +66,11 @@
         provider: deepseek-official
         model: deepseek-v4-flash
 
+    # Per-Agent live selection installed by each entry point; the registry
+    # /model command switches it without owning a private ref.
+    - id: agent-model-selection
+      name: '@deepseek-ai/dsh-agent-model-selection'
+
     - id: jobs
       name: '@deepseek-ai/dsh-jobs-local'
 
@@ -288,6 +293,10 @@
     # independent, so it follows whichever compaction service this leaf mounts.
     - id: command-compact
       name: '@deepseek-ai/dsh-command-compact'
+
+    # Human `/model`: switches the per-Agent selection the entry point installed.
+    - id: command-model
+      name: '@deepseek-ai/dsh-command-model'
 
     - id: subagent
       name: '@deepseek-ai/dsh-subagent'

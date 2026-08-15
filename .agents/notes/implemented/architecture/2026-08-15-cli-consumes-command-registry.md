@@ -36,4 +36,4 @@ The `selectionSetup` helper is replaced by a single shared `selectionRef` instal
 - CLI users can now run `/compact`, `/goal`, `/feedback`, and `/permission`, and those commands follow the same `command/run` / `command/done` log path as the web adapter.
 - `/permission` means one thing everywhere: preset switching via `permission-presets`.
 - `/model` actually switches the session's model and stops writing a fake `[system]` message into the session log; the model-visible history now reflects only real user input.
-- `/model` remains a driver-owned command until a host-side model-selection service exists; the path to that refactor is named in the code comment, not hidden.
+- `/model` has since moved into the registry through the [agent-model-selection service](2026-08-15-agent-model-selection-service.md), which removed the driver's last owned command.

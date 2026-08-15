@@ -27,6 +27,9 @@
       "path": "../../core/agent-default-model"
     },
     {
+      "path": "../../core/agent-model-selection"
+    },
+    {
       "path": "../../llm/llm"
     },
     {
