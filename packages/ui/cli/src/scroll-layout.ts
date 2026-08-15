@@ -280,12 +280,18 @@ function itemLines(item: NonToolItem, width: number): RenderLine[] {
   switch (item.kind) {
     case 'user':
       return wrapChars(plainChars(`> ${item.text}`, { color: 'cyan' }), width)
-    case 'assistant':
-      // Streaming text renders as-is; a committed message runs markdown so
-      // bold, code, lists, and headings show in the terminal like Claude Code.
-      return item.streaming
-        ? wrapChars(plainChars(item.text), width)
-        : markdownLines(item.text, width)
+    case 'assistant': {
+      // Render markdown both streaming and committed, so a `## heading` or
+      // `**bold**` reads styled the moment it lands instead of showing raw
+      // markup that snaps clean only after the turn finishes. Half-formed
+      // tokens (an unclosed fence, a lone `#`) degrade to plain text; when the
+      // partial yields nothing (e.g. a bare `## `), fall back to raw text so
+      // the growing stream never blanks out.
+      const lines = markdownLines(item.text, width)
+      return lines.length > 0 || item.text === ''
+        ? lines
+        : wrapChars(plainChars(item.text), width)
+    }
     case 'notice':
       return wrapChars(plainChars(item.text, { dim: true }), width)
     case 'divider':

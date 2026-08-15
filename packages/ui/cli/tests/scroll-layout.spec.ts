@@ -120,6 +120,24 @@ describe('layoutItems', () => {
     expect(lines[2]).toBe('hi')
   })
 
+  it('renders markdown on streaming assistant text, not raw markup', () => {
+    const items: CliViewItem[] = [
+      { kind: 'assistant', text: '## 核心思路\n\n写时复制', streaming: true },
+    ]
+    const lines = plain(layoutItems(items, 80, []))
+    // The heading is parsed, not shown as literal `##`.
+    expect(lines.some(l => l.includes('##'))).toBe(false)
+    expect(lines.some(l => l.includes('核心思路'))).toBe(true)
+  })
+
+  it('falls back to raw text when a partial markdown token yields nothing', () => {
+    const items: CliViewItem[] = [
+      { kind: 'assistant', text: '## ', streaming: true },
+    ]
+    const lines = plain(layoutItems(items, 80, []))
+    expect(lines.length).toBeGreaterThan(0)
+  })
+
   it('folds adjacent tool calls into one collapsed row', () => {
     const items: CliViewItem[] = [
       { kind: 'tool', name: 'web_search', callId: 'a', state: 'done' },
