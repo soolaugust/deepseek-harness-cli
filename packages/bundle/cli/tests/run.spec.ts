@@ -97,6 +97,36 @@ describe('runRepl', () => {
     expect(handled).toEqual([['deepseek-v4-flash']])
   })
 
+  it('falls back to the command registry after the injected table misses', async () => {
+    const resolved: string[] = []
+    const agent = {
+      whenIdle: () => Promise.resolve(),
+      session: { id: SessionId('session-test') } as Session,
+    } as unknown as Agent
+    const view = createViewStore()
+    const notices: string[] = []
+    view.subscribe(() => {
+      const last = view.getSnapshot().items.at(-1)
+      if (last?.kind === 'notice') notices.push(last.text)
+    })
+    const code = await runRepl({
+      agent,
+      view,
+      nextLine: scriptedInput(['/compact', '/permission workspace-write', '/nope', '/exit']),
+      sessions: { flush: vi.fn(async (_session: Session) => true) },
+      runCommand: async (raw) => {
+        resolved.push(raw)
+        if (raw.startsWith('/nope')) return undefined
+        return { text: `ok: ${raw}` }
+      },
+    })
+    expect(code).toBe(0)
+    expect(resolved).toEqual(['/compact', '/permission workspace-write', '/nope'])
+    expect(notices).toContain('ok: /compact')
+    expect(notices).toContain('ok: /permission workspace-write')
+    expect(notices.some(text => text.includes('unknown command: /nope'))).toBe(true)
+  })
+
   it('lists saved sessions and switches the live agent through /session', async () => {
     const switchCalls: string[] = []
     const notices: string[] = []

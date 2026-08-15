@@ -44,6 +44,13 @@ export interface CliReplDeps {
   sessions: { flush(session: Session): Promise<unknown> }
   /** Extra slash commands keyed by name, beyond the built-ins. */
   commands?: Readonly<Record<string, (args: string[], deps: CliReplDeps) => void | Promise<void>>>
+  /**
+   * Fallback dispatcher for slash commands resolved through the command
+   * registry (`ctx.commands`). Called with the verbatim line after the
+   * built-ins and `commands` miss; returns the rendered outcome, or `undefined`
+   * when the registry also does not resolve it.
+   */
+  runCommand?(raw: string): Promise<{ text: string } | undefined>
   /** List saved sessions for `/session`; absent hides the command's list. */
   listSessions?(): Promise<readonly CliSessionRef[]>
   /**
@@ -118,6 +125,11 @@ export async function runRepl(deps: CliReplDeps): Promise<number> {
         const handler = deps.commands?.[line.name]
         if (handler !== undefined) {
           await handler(line.args, deps)
+          continue
+        }
+        const result = await deps.runCommand?.(raw.trim())
+        if (result !== undefined) {
+          deps.view.notice(result.text)
           continue
         }
         deps.view.notice(`unknown command: /${line.name} (try /help)`)

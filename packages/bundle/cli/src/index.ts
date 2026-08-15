@@ -21,9 +21,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { createInteractiveIo, installCliApproval } from '@deepseek-ai/dsh-cli-ui'
-import { setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
 // Empty type imports carry the session-persistence Context merge for the
 // latest-session probe, and the commands/permission-presets Context merges for
 // the permission-cycle services, through the global service store.
@@ -223,17 +221,6 @@ async function latestSessionForCwd(
 }
 
 /**
- * Compose the model-selection setup callback shared by create and resume.
- * @param selection - the resolved provider/model this session should use.
- */
-function selectionSetup(selection: { provider: string; model: string }) {
-  return (agentCtx: Context): void => {
-    const ref: ModelSelectionRef = { current: selection, assembled: undefined }
-    installModelSelection(agentCtx, ref)
-  }
-}
-
-/**
  * Run the interactive loop on one owned session and request process exit.
  * @param ctx - plugin context carrying the Agent, default model, Session, and launcher IO services.
  * @param startup - the parsed invocation.
@@ -305,7 +292,10 @@ async function run(
 
   const base = defaultModel.currentSelection()
   const agentOptions = { provider: startup.provider ?? base.provider, model: startup.model ?? base.model }
-  const setup = selectionSetup(agentOptions)
+  // Session-scoped model selection: /model updates `current` to switch this and
+  // any later-resumed agent; saveSelection persists it as the future default.
+  const selectionRef: ModelSelectionRef = { current: agentOptions, assembled: undefined }
+  const setup = (agentCtx: Context): void => { installModelSelection(agentCtx, selectionRef) }
 
   // Resolve which session to drive: explicit id, latest for this cwd, or fresh.
   let created: AgentHandle
@@ -342,9 +332,10 @@ async function run(
   // The approval answerer grants each ask once and surfaces it in the view.
   const unsubApproval = installCliApproval(ctx, view)
 
-  // App slash commands: /model persists a model selection and injects a
-  // model-visible switch notice; /permission switches the approval policy for
-  // the live session.
+  // App slash commands the driver owns directly. /model stays here rather than
+  // in the command registry because it switches this session's live
+  // model-selection ref, which only the driver holds; every registry command
+  // (/permission, /compact, /goal, /feedback) routes through runCommand below.
   const commands: Record<string, (args: string[], deps: CliReplDeps) => void | Promise<void>> = {
     model: async (args) => {
       const model = args[0]
@@ -353,32 +344,10 @@ async function run(
         if (model === undefined) view.notice('/model <model> — e.g. deepseek-v4-flash')
         return
       }
-      await defaultModel.saveSelection({
-        provider: handle.agent.options.provider ?? base.provider,
-        model,
-      })
-      handle.agent.inject(createUserMessage({
-        content: [{ type: 'text', text: `[system] Model switched to ${model}.` }],
-        source: { kind: 'user' },
-      }))
+      const next = { provider: handle.agent.options.provider ?? base.provider, model }
+      selectionRef.current = next
+      await defaultModel.saveSelection(next)
       view.notice(`model → ${model}`)
-    },
-    permission: (args) => {
-      const policy = args[0]
-      const handle = currentHandle
-      if (policy !== 'ask' && policy !== 'never' || handle === undefined) {
-        if (policy !== 'ask' && policy !== 'never') {
-          view.notice('/permission <ask|never> — approval prompting stance')
-        }
-        return
-      }
-      try {
-        setApprovalPolicy(handle.agent.session, policy)
-        view.notice(`approval policy → ${policy}`)
-      } catch (error) {
-        process.stderr.write(`dsh: /permission: ${error instanceof Error ? error.message : String(error)}\n`)
-        view.notice(`/permission failed: ${error instanceof Error ? error.message : String(error)}`)
-      }
     },
   }
 
@@ -418,6 +387,17 @@ async function run(
     }))
   }
 
+  // Route a slash command through the command registry (`ctx.commands`);
+  // undefined when the registry is not composed or does not resolve the line.
+  const commandsRegistry = ctx.get('commands')
+  const runCommand = async (raw: string): Promise<{ text: string } | undefined> => {
+    const handle = currentHandle
+    if (commandsRegistry === undefined || handle === undefined) return undefined
+    const execution = await commandsRegistry.execute(handle.agent, raw, new AbortController().signal)
+    if (execution === undefined) return undefined
+    return { text: execution.result.text ?? '' }
+  }
+
   const handle = currentHandle
   const code = await runRepl({
     agent: handle.agent,
@@ -427,6 +407,7 @@ async function run(
     listSessions,
     switchSession,
     commands,
+    runCommand,
     recordPrompt: (text) => {
       if (text.trim() !== '' && promptHistory.at(-1) !== text) {
         promptHistory.push(text)
