@@ -122,12 +122,16 @@ export interface CliTextInputProps {
  */
 export function CliTextInput({ value, onChange, onSubmit, onHistoryUp, onHistoryDown, focus = true }: CliTextInputProps) {
   const [offset, setOffset] = React.useState(value.length)
-  // Keep the cursor at the end when the value changes externally.
-  React.useEffect(() => { setOffset(value.length) }, [value])
+  // Clamp the cursor when the value shrinks externally (e.g. submit clears the
+  // input), but never force it back to the end: the user's own edits drive the
+  // offset through applyKeypress and must keep the cursor where they put it.
+  React.useEffect(() => {
+    setOffset(o => Math.min(o, value.length))
+  }, [value.length])
   // Synchronous mirrors of value/offset so rapid consecutive keystrokes fold
   // against the latest state instead of a stale render closure.
   const valueRef = React.useRef(value)
-  const offsetRef = React.useRef(value.length)
+  const offsetRef = React.useRef(offset)
   React.useEffect(() => { valueRef.current = value })
   React.useEffect(() => { offsetRef.current = offset })
 

@@ -5,7 +5,8 @@ import { applyKeypress } from '../src/text-input.tsx'
 
 describe('applyKeypress', () => {
   it('submits on Enter when non-empty and ignores an empty value', () => {
-    expect(applyKeypress('', { return: true }, 'hi', 2)).toEqual({ submit: 'hi' })
+    // Enter also resets the cursor to the start, ready for the next input.
+    expect(applyKeypress('', { return: true }, 'hi', 2)).toEqual({ submit: 'hi', offset: 0 })
     expect(applyKeypress('', { return: true }, '', 0)).toEqual({})
   })
 
