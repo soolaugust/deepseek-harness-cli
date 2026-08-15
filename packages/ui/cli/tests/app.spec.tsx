@@ -53,4 +53,32 @@ describe('CliApp', () => {
     expect(frame).toContain('busy')
     expect(frame).toContain('session-1')
   })
+
+  it('renders markdown, folds tool runs, and does not interleave long content', () => {
+    const { lastFrame } = renderApp({
+      items: [
+        { kind: 'user', text: '说明冒泡排序' },
+        {
+          kind: 'assistant',
+          streaming: false,
+          text: '冒泡排序反复交换相邻的逆序元素。\n\n1. 比较相邻元素\n2. 顺序不对则交换\n3. 重复直到无交换\n\n```c\nfor (int i = 0; i < n - 1; i++) {\n    for (int j = 0; j < n - i - 1; j++) {\n        if (a[j] > a[j + 1]) swap(a[j], a[j + 1]);\n    }\n}\n```\n\n最坏情况是 O(n²)。',
+        },
+        { kind: 'tool', name: 'bash', callId: 'c1', state: 'done' },
+        { kind: 'tool', name: 'grep', callId: 'c2', state: 'done' },
+      ],
+    })
+    const frame = lastFrame() ?? ''
+    // Folded tool run: a single row naming both tools.
+    expect(frame).toContain('⇣ 2 tools')
+    expect(frame).toContain('bash')
+    expect(frame).toContain('grep')
+    // Code fence stays intact: the list item after it is not dragged into it.
+    expect(frame).toContain('for (int i = 0; i < n - 1; i++) {')
+    expect(frame).toContain('最坏情况是 O(n²)。')
+    // The closing brace of the code fence must appear before the trailing text.
+    const codeEnd = frame.indexOf('}')
+    const tail = frame.indexOf('最坏情况')
+    expect(codeEnd).not.toBe(-1)
+    expect(tail).toBeGreaterThan(codeEnd)
+  })
 })

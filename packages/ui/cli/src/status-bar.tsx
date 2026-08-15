@@ -3,7 +3,7 @@
  * whole-session figures the web surface renders — turn/step counts, LLM and
  * tool wall time, first-token latency, throughput, cache hit rate, and
  * input/output tokens. The status line sits above the input bar (upper-left);
- * the stats summary renders inside the input bar's right side.
+ * the stats summary renders on the same line's right side, above the input bar.
  * @module @deepseek-ai/dsh-cli-ui/status-bar
  */
 
@@ -12,12 +12,11 @@ import { Box, Text, useStdout } from 'ink'
 import type { CliViewState } from './types.ts'
 
 /**
- * Columns reserved on the stats row for the idle/session head to the strip's
- * left: the `○ idle`/`● busy` prefix (6) plus two lead spaces, plus the
- * strip's own left padding (1). The strip truncates rather than squeeze the
- * head below this on narrow terminals.
+ * Minimum columns reserved on the stats row for the `○ idle`/`● busy` + session
+ * id head to the strip's left. The strip truncates rather than overlap that
+ * head, which sits on the same line above the input bar.
  */
-const STATS_HEAD_WIDTH = 9
+const STATS_HEAD_WIDTH = 12
 
 /** Format a millisecond span compactly (`2m8s`, `1.2s`, `300ms`). */
 function fmtMs(ms: number): string {

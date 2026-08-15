@@ -1,128 +1,103 @@
 /**
- * The top scroll region: renders the trailing slice of the conversation.
- * It flex-grows to fill the space above the fixed status line and input, and
- * auto-sticks to the bottom as new items arrive.
+ * The top scroll region: a virtualized window over the transcript's styled
+ * line model (`scroll-layout`). It renders only the visible slice of lines, so
+ * a long transcript scrolls inside the region and the input stays pinned at
+ * the bottom — and it never relies on ink's fixed-height clipping, which
+ * mis-wraps CJK once content overflows.
  *
- * Adjacent tool calls render as a single collapsed group (`⇣ 3 tools`) like
- * Claude Code's grouped tool use; the group expands on demand. Every item
- * gets breathing room so the transcript does not stack flush together.
+ * Scrolling is keyboard-driven: PgUp/PgDn page the window. While pinned to the
+ * bottom the region auto-follows new items as they arrive; scrolling back pauses
+ * the follow until the user returns to the bottom. ↑/↓ stay with the text input
+ * for history navigation, so they are not consumed here.
  * @module @deepseek-ai/dsh-cli-ui/scroll-region
  */
 
 import * as React from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
-import type { CliViewItem, CliViewState } from './types.ts'
-import { markdownToInk } from './markdown.tsx'
-import { ToolCard } from './tool-cards.tsx'
+import type { CliViewState } from './types.ts'
+import { layoutItems, foldRows, scrollStep, viewportSlice } from './scroll-layout.ts'
+import type { StyledRun } from './scroll-layout.ts'
 
-/** Whether a tool item is collapsible into a group. */
-function isTool(item: CliViewItem): item is Extract<CliViewItem, { kind: 'tool' }> {
-  return item.kind === 'tool'
-}
+/** Rows reserved above the scroll region by the status line, stats, and input. */
+const FIXED_ROWS = 4
 
-/** Render a non-tool conversation item. */
-function renderItem(item: CliViewItem, key: React.Key) {
-  switch (item.kind) {
-    case 'user':
-      return <Text key={key} color="cyan">{'> '}{item.text}</Text>
-    case 'assistant':
-      // Streamed text renders as-is (markdown is still forming); a committed
-      // message gets the markdown → ink pass so bold, code, lists, and
-      // headings show in the terminal like Claude Code.
-      return item.streaming
-        ? <Text key={key}>{item.text}</Text>
-        : <Box key={key} flexDirection="column">{markdownToInk(item.text)}</Box>
-    case 'tool':
-      return <ToolCard key={key} item={item} />
-    case 'notice':
-      return <Text key={key} dimColor>{item.text}</Text>
-    case 'divider':
-      return <Text key={key} dimColor>{'─'.repeat(20)}</Text>
-  }
-}
+/** The minimum usable viewport height in rows. */
+const MIN_HEIGHT = 5
 
-/** Render a collapsed tool-run row, or its expanded tools. */
-function renderToolRow(row: ToolRow, expanded: boolean, key: React.Key) {
-  if (!expanded) {
-    const names = [...new Set(row.tools.map(tool => tool.name))].join(', ')
-    return (
-      <Text key={key} dimColor>
-        ⇣ {row.tools.length} tool{row.tools.length > 1 ? 's' : ''} · {names}
-      </Text>
-    )
-  }
+/** Render one styled run as an ink `<Text>`, carrying only set styles. */
+function StyledText({ run }: { run: StyledRun }) {
   return (
-    <Box key={key} flexDirection="column">
-      {row.tools.map((tool, index) => <ToolCard key={`${tool.callId}-${index}`} item={tool} />)}
-    </Box>
+    <Text
+      {...(run.bold ? { bold: true } : {})}
+      {...(run.italic ? { italic: true } : {})}
+      {...(run.dim ? { dimColor: true } : {})}
+      {...(run.color !== undefined ? { color: run.color } : {})}
+    >
+      {run.text}
+    </Text>
   )
 }
 
-/** A run of adjacent tool items plus the flag that shows their names. */
-type ToolRow = { tools: Extract<CliViewItem, { kind: 'tool' }>[] }
-
-/** Split the visible items into renderable rows, folding adjacent tools into one row. */
-function foldRows(items: readonly CliViewItem[]): Array<{ item?: CliViewItem; tools?: ToolRow }> {
-  const rows: Array<{ item?: CliViewItem; tools?: ToolRow }> = []
-  let run: ToolRow | undefined
-  for (const item of items) {
-    if (isTool(item)) {
-      if (run === undefined) run = { tools: [] }
-      run.tools.push(item)
-    } else {
-      if (run !== undefined) {
-        rows.push({ tools: run })
-        run = undefined
-      }
-      rows.push({ item })
-    }
-  }
-  if (run !== undefined) rows.push({ tools: run })
-  return rows
-}
-
 /**
- * The scrollable conversation region. The visible window is the trailing
- * slice sized to the terminal rows, so the newest items stay on screen.
+ * The scrollable conversation region. The visible window is a slice of the
+ * styled line list sized to the terminal rows, so the newest items stay on
+ * screen and the input stays pinned at the bottom.
  * @param view - the current view state.
  */
 export function ScrollRegion({ view }: { view: CliViewState }) {
   const { stdout } = useStdout()
-  // Fixed-height scroll window: the conversation occupies the terminal rows
-  // minus the status line, stats bar, and input bar, so a long transcript
-  // scrolls inside this region and the input stays pinned at the bottom.
+  const width = stdout.columns && stdout.columns > 0 ? stdout.columns : 80
   const rows = stdout.rows && stdout.rows > 0 ? stdout.rows : 24
-  const height = Math.max(5, rows - 4)
-  const folded = foldRows(view.items)
+  const height = Math.max(MIN_HEIGHT, rows - FIXED_ROWS)
+
   // Track which tool rows are expanded; Ctrl+O toggles all.
-  const [expandedRows, setExpandedRows] = React.useState<boolean[]>([])
+  const groups = foldRows(view.items).filter(row => row.tools !== undefined).length
+  const [expanded, setExpanded] = React.useState<boolean[]>([])
   React.useEffect(() => {
-    if (folded.length !== expandedRows.length) {
-      setExpandedRows(Array(folded.length).fill(false))
+    setExpanded((prev) => {
+      if (prev.length === groups) return prev
+      return Array(groups).fill(false) as boolean[]
+    })
+  }, [groups])
+
+  const lines = React.useMemo(() => layoutItems(view.items, width, expanded), [view.items, width, expanded])
+  const total = lines.length
+  const maxOffset = Math.max(0, total - height)
+
+  // Offset from the bottom in lines; 0 pins to the newest content.
+  const [offset, setOffset] = React.useState(0)
+  // Synchronous mirror so rapid PgUp/PgDn presses fold against the latest
+  // offset instead of a stale render closure.
+  const offsetRef = React.useRef(offset)
+  React.useEffect(() => { offsetRef.current = offset })
+  React.useEffect(() => {
+    // Clamp when content shrinks; when pinned, stay pinned as content grows.
+    setOffset(o => Math.min(o, maxOffset))
+  }, [maxOffset])
+
+  useInput((rawInput, key) => {
+    if (key.ctrl && rawInput === 'o') {
+      setExpanded(runs => runs.map(expanded => !expanded))
+      return
     }
-  }, [folded.length])
-  useInput((input, key) => {
-    // Ctrl+O expands/collapses every tool run.
-    if (key.ctrl && input === 'o') {
-      setExpandedRows(runs => runs.map(expanded => !expanded))
-    }
+    const next = scrollStep(offsetRef.current, key, height, maxOffset)
+    if (next !== offsetRef.current) setOffset(next)
   })
-  const offset = Math.max(0, folded.length - height)
-  const visible = folded.slice(offset)
+
+  const [start, end] = viewportSlice(total, height, offset)
+  const visible = lines.slice(start, end)
+
   return (
-    <Box flexDirection="column" height={height} overflowY="hidden" justifyContent="flex-end">
+    <Box flexDirection="column" height={height}>
       {visible.length === 0
         ? <Text dimColor>No messages yet — type a prompt below.</Text>
-        : visible.map((row, index) => {
-          const globalIndex = offset + index
-          return (
-            <Box key={`row-${globalIndex}`} flexDirection="column" marginBottom={row.tools !== undefined ? 2 : 1}>
-              {row.tools !== undefined
-                ? renderToolRow(row.tools, expandedRows[globalIndex] ?? false, `tools-${globalIndex}`)
-                : renderItem(row.item as CliViewItem, `item-${globalIndex}`)}
-            </Box>
-          )
-        })}
+        : visible.map((line, index) => (
+          <Box key={`line-${start + index}`} height={1} flexDirection="row">
+            {line.runs.length === 0
+              ? <Text> </Text>
+              : line.runs.map((run, runIndex) => <StyledText key={runIndex} run={run} />)}
+          </Box>
+        ))}
     </Box>
   )
 }

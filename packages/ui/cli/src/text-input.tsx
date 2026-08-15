@@ -63,7 +63,7 @@ export function applyKeypress(
     return { value: next, offset: offset + text.length, submit: next }
   }
   if (key.return) {
-    return value.trim() !== '' ? { submit: value } : {}
+    return value.trim() !== '' ? { submit: value, offset: 0 } : {}
   }
   if (key.escape || (key.ctrl && rawInput === 'c')) return {}
   if (key.leftArrow) return { offset: Math.max(0, offset - 1) }
