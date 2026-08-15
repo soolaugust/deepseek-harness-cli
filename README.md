@@ -17,6 +17,10 @@ Under the hood it is DeepSeek Harness's plugin architecture ([everything is a pl
 - **Session resume**: reopening `dsh cli` continues the last session, switch with `/session`
 - **Hot-reload development**: `pnpm dsh:dev` (node --watch) auto-restarts on source changes
 
+## Demo
+
+![dsh cli interactive terminal](assets/dsh-cli-demo.png)
+
 ## Quick start
 
 Requires Node.js ≥ 22.

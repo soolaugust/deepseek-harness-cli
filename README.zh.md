@@ -17,6 +17,10 @@
 - **会话恢复**：重开 `dsh cli` 续上次会话，`/session` 切换
 - **热加载开发**：`pnpm dsh:dev`（node --watch）改源码自动重启
 
+## Demo
+
+![dsh cli 交互式终端](assets/dsh-cli-demo.png)
+
 ## 快速开始
 
 要求 Node.js ≥ 22。
