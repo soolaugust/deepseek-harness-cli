@@ -43,6 +43,20 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
   // instead of being dropped as "no reaction".
   const buffer: string[] = []
   let disposed = false
+  // Whether the terminal was switched to the alternate screen. Idempotent so
+  // the dispose path and the process-exit fallback never double-send.
+  let enteredAltScreen = false
+  // Restore the terminal after the TUI: leave the alternate screen (bringing
+  // back the shell's prior content) and disable SGR mouse mode so the wheel
+  // scrolls the shell's own history. This runs on dispose AND on process exit,
+  // so a crash or a signal that skips the normal teardown cannot leave the
+  // terminal stuck reporting mouse events (Claude Code's known #55424).
+  const restoreTerminal = (): void => {
+    if (!process.stdout.isTTY || !enteredAltScreen) return
+    enteredAltScreen = false
+    process.stdout.write('\x1b[?1000l\x1b[?1006l')
+    process.stdout.write('\x1b[?1049l')
+  }
   // The ink tree alone consumes stdin: any extra 'readable' listener would
   // compete for the same stream and starve ink's keypress handling.
   const resolveNext = (line: string | null): void => {
@@ -60,11 +74,16 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
   // real TTY — piped/CI output must not be polluted with screen-switch codes.
   if (process.stdout.isTTY) {
     process.stdout.write('\x1b[?1049h')
+    enteredAltScreen = true
     // SGR mouse mode so the wheel arrives as `\x1b[<64/65;…M` events that the
     // scroll region parses, instead of being translated to arrow keys that the
     // input consumes as history. `?1000h` enables button events, `?1006h` is
     // the SGR encoding (coordinates + precise button ids).
     process.stdout.write('\x1b[?1000h\x1b[?1006h')
+    // Fallback for abnormal exits (signals, uncaught errors) that bypass the
+    // normal dispose path: `exit` fires on every process exit. Node only allows
+    // synchronous work here, and a plain write is exactly that.
+    process.on('exit', restoreTerminal)
   }
   const instance = render(
     <CliApp
@@ -94,12 +113,8 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
     dispose: () => {
       disposed = true
       instance.unmount()
-      // Leave the alternate screen, restoring the terminal's prior content,
-      // and disable mouse mode so the wheel scrolls the shell's own history.
-      if (process.stdout.isTTY) {
-        process.stdout.write('\x1b[?1000l\x1b[?1006l')
-        process.stdout.write('\x1b[?1049l')
-      }
+      restoreTerminal()
+      if (process.stdout.isTTY) process.off('exit', restoreTerminal)
     },
   }
 }
