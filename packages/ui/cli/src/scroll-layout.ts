@@ -214,9 +214,19 @@ class LineBuilder {
       case 'image':
         this.add((token as Tokens.Image).title ?? (token as Tokens.Image).href, { ...inherited, dim: true })
         return
-      case 'text':
-        this.add((token as Tokens.Text).text, inherited)
+      case 'text': {
+        // A marked Text token may wrap nested inline tokens (a list item's
+        // tokens arrive as one outer `text` whose `tokens` hold the strong /
+        // codespan / em children). Recurse into them so `- **bold**` and
+        // `` `code` `` render styled, not as raw markup.
+        const inner = (token as Tokens.Text).tokens
+        if (inner !== undefined && inner.length > 0) {
+          this.addInline(inner, inherited)
+        } else {
+          this.add((token as Tokens.Text).text, inherited)
+        }
         return
+      }
       default:
         this.add((token as { raw: string }).raw, inherited)
     }

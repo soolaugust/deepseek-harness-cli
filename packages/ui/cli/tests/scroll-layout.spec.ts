@@ -74,6 +74,20 @@ describe('markdownLines', () => {
     expect(lines.some(l => l.includes('1. 第一项'))).toBe(true)
     expect(lines.some(l => l.includes('2. 第二项'))).toBe(true)
   })
+
+  it('renders strong and codespan inside a list item instead of raw markup', () => {
+    // marked nests a list item's inline tokens under one outer `text` token;
+    // the renderer must recurse so `**bold**` and `` `code` `` get styled.
+    const lines = markdownLines('- **粗体** 和 `code`', 60)
+    const runs = lines.flatMap(line => line.runs)
+    const bold = runs.find(r => r.text === '粗体')
+    const code = runs.find(r => r.text === 'code')
+    expect(bold?.bold).toBe(true)
+    expect(code?.color).toBe('cyan')
+    // No raw markdown markers survive.
+    expect(runs.some(r => r.text.includes('**'))).toBe(false)
+    expect(runs.some(r => r.text.includes('`'))).toBe(false)
+  })
 })
 
 describe('scrollStep', () => {
