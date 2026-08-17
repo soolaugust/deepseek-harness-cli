@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-cli-ui",
   "description": "The dsh terminal UI: an ink renderer over the REPL view store, with input bar, scroll region, tool cards, and approval/question providers",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },

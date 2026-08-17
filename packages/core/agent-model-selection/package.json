@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-agent-model-selection",
   "description": "Agent-scoped model selection shared by runtime entry points",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },

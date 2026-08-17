@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-reliability-guard",
   "description": "Reliability guard plugin: celery harness four-parameter failure attribution, goal gating, and prompt injection",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },

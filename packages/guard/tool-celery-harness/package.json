@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-tool-celery-harness",
   "description": "Deterministic celery reliability-rein tools: each tool spawns one celery python check over the subprocess seam and returns its verbatim Chinese verdict to the model",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },

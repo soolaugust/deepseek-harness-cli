@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-cli",
   "description": "The dsh interactive terminal bundle: a REPL driver over dsh-base with session resume and a terminal UI",
-  "version": "0.1.0-rc.5",
+  "version": "0.1.0",
   "publishConfig": {
     "access": "public"
   },
