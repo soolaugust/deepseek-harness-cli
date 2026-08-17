@@ -39,7 +39,7 @@
 
 #### 模型看到什么
 
-斜杠输入与直接的 status/output 文本不进入模型请求。切换在下一次请求的 provider 与 model 生效；它不作为消息注入。
+斜杠输入与直接的 status/output 文本不进入模型请求。切换（`/model`）在下一次请求的 provider 与 model 生效；它不作为消息注入。
 
 #### Token 影响
 

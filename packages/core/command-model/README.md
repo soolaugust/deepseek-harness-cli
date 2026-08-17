@@ -39,7 +39,7 @@ The producer injects `commands`, `agentModelSelection`, and `agentDefaultModel`.
 
 #### What the model sees
 
-The slash input and direct status/output text are absent from model requests. The switch takes effect in the next request's provider and model; it is not injected as a message.
+The slash input and direct status/output text are absent from model requests. The switch (`/model`) takes effect in the next request's provider and model; it is not injected as a message.
 
 #### Token effect
 
