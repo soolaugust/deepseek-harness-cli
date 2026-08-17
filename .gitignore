@@ -3,6 +3,12 @@ CLAUDE.local.md
 node_modules/
 lib/
 *.tsbuildinfo
+# A stray tsc emit into src/ (instead of the configured lib/ outDir) is never
+# source: a .js/.d.ts/.map next to a .ts file is regenerable build garbage.
+src/**/*.js
+src/**/*.d.ts
+src/**/*.d.ts.map
+src/**/*.js.map
 pnpm-debug.log
 .pnpm-store/
 .cache/
