@@ -61,7 +61,7 @@ function cliCommand(): Command {
     .option('--cwd <path>', 'working directory for the session', process.cwd())
     .option('--resume [choice]', 'session to drive: latest (a bare --resume), fresh, or a session id; default is a brand-new session')
     .option('--permission <preset>', 'permission preset: read-only, workspace-write (default), or danger-full-access', 'workspace-write')
-    .option('--mode <preset>', 'agent preset to compose the session from (e.g. standard, code, memory-os); default depends on the deployment roster')
+    .option('-m, --mode <preset>', 'agent preset to compose the session from (e.g. standard, code, memory-os); default depends on the deployment roster')
     .option('--no-interactive', 'do not start the terminal UI; print plain output (CI)')
     .option('--verbose', 'extra diagnostics on stderr')
     .addHelpText('after', `

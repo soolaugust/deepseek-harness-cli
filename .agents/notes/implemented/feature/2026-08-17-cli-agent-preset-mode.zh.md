@@ -28,10 +28,13 @@ Web 界面为每个会话选择 **agent preset**：`standard`、`code`、`celery
 
 ## 后果
 
-`dsh cli --mode <id>` 与 `/mode` 以 Web 的 blank 门与日志恢复语义在 CLI 上呈现 agent preset 选择。机制是可选启用的：若 profile 没有 agent-presets 行，`--mode` 与 `/mode` 无效，`dsh cli` 完全按先前运行——因此本变更对当前交付的 profile 零风险上架。清单挂载的决策保持开放：挂载后默认激活模式选择，也是完全对齐选项的前置工作。
+`dsh cli -m/--mode <id>` 与 `/mode` 以 Web 的 blank 门与日志恢复语义在 CLI 上呈现 agent preset 选择。机制是可选启用的：若 profile 没有 agent-presets 行，`--mode` 与 `/mode` 无效，`dsh cli` 完全按先前运行——因此本变更对当前交付的 profile 零风险上架。
+
+清单挂载选项（在 cli bundle 加一个 `agent-presets` 行从而默认激活模式选择）**经实测后否决**：出厂 preset 都无法在终端宿主上稳定组合。`standard`、`code`、`celery`、`cordis`、`memory-os` 各自组合失败（其工具行等待 `tools`、`shell`、`fs`、`systemPrompt` 等宿主能力服务，而 CLI profile 不会把这些暴露给 preset 的稳定组合），自足的 `minimal` 也不稳定（`persona` 偶发等待 `systemPrompt`）。同样的 preset 在 Web 宿主（base + `web.cordis.yml`）上可靠组合，说明出厂 preset 是 Web 宿主组合；要让清单挂载默认可用，需要此处延后的 profile 层基础拆分，因此 CLI profile 暂时维持可选启用。
 
 ## 验证
 
 - 单元：`run.spec.ts` 的 `/mode` 列出清单 id 并切换 blank 会话，对拒绝的目标提示 `no such mode`；视图 store 记录 `mode` 供状态徽标使用。
-- Loader 冒烟（`smoke.e2e.ts`）：`dsh cli --mode code` 在无清单的干净树上解析并运行（flag 无效），证明未挂载 preset 时该 flag 不会破坏组合。
+- Loader 冒烟（`smoke.e2e.ts`）：`dsh cli -m code` 在无清单的干净树上解析并运行（flag 无效），证明未挂载 preset 时该 flag 不会破坏组合。
+- 清单挂载探针：向 cli bundle 添加 `agent-presets` 行（`default: standard`）并为每个出厂 preset 启动 profile——`standard`、`code`、`celery`、`cordis`、`memory-os`、`minimal`。除 `minimal` 外全部挂载失败（6–8 行工具等待宿主能力）；`minimal` 也只是间歇性挂载（`persona` 等待 `systemPrompt`）。同样的 preset 在 Web 宿主上都能挂载，确认缺口因宿主而异。
 - 手动：在有清单的 profile 上 `dsh cli --mode code` 会以 `code` 创建会话；`/mode` 列出并切换 blank 会话、拒绝已开始的会话。
