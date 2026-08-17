@@ -56,10 +56,14 @@ export function applyKeypress(
   onHistoryUp?: (current: string) => string | undefined,
   onHistoryDown?: (current: string) => string | undefined,
 ): KeypressEdit {
-  // A mouse wheel event is not text: with SGR mouse mode enabled the terminal
-  // sends `\x1b[<64/65;…M` sequences, and the scroll region consumes them. The
-  // input must not insert the raw escape as printable input.
-  if (parseMouseWheel(rawInput) !== 0) return {}
+  // A mouse event is not text: with SGR mouse mode enabled the terminal sends
+  // `\x1b[<…M` sequences that the scroll region consumes. ink strips the
+  // leading ESC and may deliver the sequence in chunks, so a parseable wheel
+  // event, any `[<` prefix, or a `digits;semicolons` fragment (a torn remainder
+  // of the SGR payload) must never reach the input as printable text.
+  if (parseMouseWheel(rawInput) !== 0
+    || rawInput.startsWith('[<')
+    || (rawInput.includes(';') && /^[0-9;<>]*[Mm]?$/.test(rawInput))) return {}
   // Coalesced Enter: a single chunk like "o\r" on a slow link is a value plus
   // Enter. Strip the trailing \r, apply the text, then submit.
   if (rawInput.length > 1 && rawInput.endsWith('\r') && !rawInput.slice(0, -1).includes('\r')) {

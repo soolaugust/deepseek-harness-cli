@@ -92,17 +92,18 @@ describe('scrollStep', () => {
 
 describe('parseMouseWheel', () => {
   it('maps SGR wheel-up/down sequences to scroll direction', () => {
-    expect(parseMouseWheel('\x1b[<64;10;20M')).toBe(1)
-    expect(parseMouseWheel('\x1b[<65;10;20M')).toBe(-1)
+    // ink strips the leading ESC, so the input is `[<…M`.
+    expect(parseMouseWheel('[<64;10;20M')).toBe(1)
+    expect(parseMouseWheel('[<65;10;20M')).toBe(-1)
   })
   it('accepts the release variant and ignores non-wheel buttons', () => {
-    expect(parseMouseWheel('\x1b[<64;10;20m')).toBe(1)
-    expect(parseMouseWheel('\x1b[<0;10;20M')).toBe(0) // left click
-    expect(parseMouseWheel('\x1b[<66;10;20M')).toBe(0) // wheel right
+    expect(parseMouseWheel('[<64;10;20m')).toBe(1)
+    expect(parseMouseWheel('[<0;10;20M')).toBe(0) // left click
+    expect(parseMouseWheel('[<66;10;20M')).toBe(0) // wheel right
   })
   it('ignores ordinary input', () => {
     expect(parseMouseWheel('a')).toBe(0)
-    expect(parseMouseWheel('\x1b[A')).toBe(0)
+    expect(parseMouseWheel('[A')).toBe(0)
     expect(parseMouseWheel('')).toBe(0)
   })
 })

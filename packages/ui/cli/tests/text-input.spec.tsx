@@ -44,8 +44,16 @@ describe('applyKeypress', () => {
 
   it('ignores SGR mouse wheel events instead of inserting them', () => {
     // The scroll region consumes the wheel; the input must not insert the raw
-    // escape sequence.
-    expect(applyKeypress('\x1b[<64;10;20M', {}, 'ab', 1)).toEqual({})
-    expect(applyKeypress('\x1b[<65;10;20M', {}, 'ab', 1)).toEqual({})
+    // escape sequence. ink strips the leading ESC, so the input is `[<…M`.
+    expect(applyKeypress('[<64;10;20M', {}, 'ab', 1)).toEqual({})
+    expect(applyKeypress('[<65;10;20M', {}, 'ab', 1)).toEqual({})
+  })
+
+  it('ignores chunked mouse sequence fragments too', () => {
+    // A slow stdin can deliver the SGR mouse escape in pieces; each fragment
+    // must not reach the input as printable text.
+    expect(applyKeypress('[<', {}, 'ab', 1)).toEqual({})
+    expect(applyKeypress('65;10;20M', {}, 'ab', 1)).toEqual({})
+    expect(applyKeypress('10;20M', {}, 'ab', 1)).toEqual({})
   })
 })
