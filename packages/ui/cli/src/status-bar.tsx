@@ -115,7 +115,8 @@ export function SessionStats({ view }: { view: CliViewState }) {
   const summary = statsSummary(view)
   // Leave room for the idle/session head on the same line's left; the strip
   // itself takes the rest of the row and truncates only at the right edge.
-  const max = (stdout.columns ?? 80) - STATS_HEAD_WIDTH
+  const columns = stdout.columns && stdout.columns > 0 ? stdout.columns : 80
+  const max = columns - STATS_HEAD_WIDTH
   return (
     <Box flexShrink={0} paddingLeft={1}>
       <Text dimColor>{truncateToWidth(summary, max)}</Text>
