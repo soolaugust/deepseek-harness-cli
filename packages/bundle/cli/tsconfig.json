@@ -48,6 +48,9 @@
       "path": "../../interaction/permission-presets"
     },
     {
+      "path": "../../preset/agent-presets"
+    },
+    {
       "path": "../../ui/cli"
     },
     {

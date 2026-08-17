@@ -18,7 +18,7 @@ import z from '@deepseek-ai/schemastery'
 import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import { createInteractiveIo, installCliApproval } from '@deepseek-ai/dsh-cli-ui'
 import type {} from '@deepseek-ai/dsh-user-approval'
 // Empty type imports carry the session-persistence Context merge for the
@@ -28,6 +28,10 @@ import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import type {} from '@deepseek-ai/dsh-agent-model-selection'
+// Value import carries the roster's resolve-past-header rule and the Context
+// merge for the agentPresets service, so the runner can compose an agent from
+// a session's recorded preset and re-link a live blank agent to another one.
+import { resolveSessionPreset } from '@deepseek-ai/dsh-agent-presets'
 // Empty type imports carry the loader Context merge for the settlement await
 // and the cmdline Context merge for the appExit host value.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -64,6 +68,18 @@ export const Config: z<Config> = z.object({
 /** The minimum persistence surface the latest-session probe needs. */
 interface PersistenceLister {
   list(signal?: AbortSignal): Promise<readonly { id: SessionId; cwd?: string; createdAt: number }[]>
+  /** Load one pending session's header and event log, to resolve its recorded preset. */
+  load(id: SessionId): Promise<{ meta: SessionHeader; events: readonly SessionEvent[] }>
+}
+
+/** The minimum agent-preset roster surface the session composition needs. */
+interface PresetService {
+  /** Resolve one preset id (or the roster default) to its mountable identity. */
+  resolve(id?: string): Promise<{ id: string }>
+  /** Compose an agent from a preset, in the agent factory's setup hook. */
+  mount(agentCtx: Context, id?: string): Promise<{ id: string }>
+  /** Enumerate the roster's preset ids for `/mode`'s available-modes listing. */
+  list(): Promise<readonly { id: string }[]>
 }
 
 /** The maximum number of prompt-history lines kept on disk. */
@@ -106,6 +122,119 @@ function cyclePermission(ctx: Context, agent: Agent | undefined, view: CliViewSt
       view.notice(`permission → ${next}`)
     })
     .catch(() => { view.notice(`permission switch to ${next} failed`) })
+}
+
+/**
+ * Compose an agent from a preset, mirroring the Web surface's
+ * {@link createApiRemoteAgentResolver composeAgent}: resolve the preset
+ * BEFORE the session exists so its id reaches the creation header, then mount
+ * it in the agent factory's `setup` so a rejected composition rolls the whole
+ * creation back. A deployment with no preset roster composes nothing — every
+ * session shares the host composition, which is the behavior before presets
+ * existed.
+ * @param presets - the agent-preset roster service, narrowed to the surface used.
+ * @param baseSetup - the setup every created/resumed agent already runs
+ * (installs the session-scoped model selection); the composed setup runs it
+ * first, then mounts the preset.
+ * @param presetId - the requested preset id, or `undefined` for the roster default.
+ * @returns the id to record on the header (absent without a roster) and the
+ * setup callback that installs the session selection and mounts the preset.
+ * @throws when the roster supplies no usable preset under `presetId`.
+ */
+async function composeFrom(
+  presets: PresetService | undefined,
+  baseSetup: (agentCtx: Context) => void | Promise<void>,
+  presetId: string | undefined,
+): Promise<{
+  agentPreset?: string
+  setup: (agentCtx: Context) => void | Promise<void>
+}> {
+  if (presets === undefined) return { setup: baseSetup }
+  // resolve() re-reads the roster and throws for a broken or unknown preset,
+  // so a bad `--mode` fails before the session boundary snapshots meta.
+  const resolvedId = (await presets.resolve(presetId)).id
+  return {
+    agentPreset: resolvedId,
+    setup: (agentCtx: Context) => {
+      const result = baseSetup(agentCtx)
+      return void presets.mount(agentCtx, resolvedId).then(() => result)
+    },
+  }
+}
+
+/**
+ * Compose the setup for resuming an existing session: its preset comes from
+ * the session's recorded history. Read the log, not the header, so a session
+ * that switched while blank resumes under the newer composition.
+ * @param persistence - the session-persistence surface with `load`.
+ * @param presets - the roster, when the deployment composes agents.
+ * @param baseSetup - the canonical agent setup to chain the preset mount onto.
+ * @param sessionId - the persisted session to resume.
+ * @param fallbackPresetId - a preset to compose a session that recorded none,
+ * such as an explicit `--mode` the user passed on a legacy session.
+ * @returns the composition for the runner's `agents.resume` setup.
+ */
+async function composeForResume(
+  persistence: Pick<PersistenceLister, 'load'>,
+  presets: PresetService | undefined,
+  baseSetup: (agentCtx: Context) => void | Promise<void>,
+  sessionId: SessionId,
+  fallbackPresetId: string | undefined,
+): Promise<{
+  agentPreset?: string
+  setup: (agentCtx: Context) => void | Promise<void>
+}> {
+  const inspected = await persistence.load(sessionId)
+  const recorded = resolveSessionPreset({ header: inspected.meta, events: inspected.events })
+  return composeFrom(presets, baseSetup, recorded ?? fallbackPresetId)
+}
+/**
+ * Whether the session's conversation has started: no model-loop turn has run.
+ * Mirrors the Web receiver's blank gate, which a started conversation fixes
+ * because swapping its preset would leave logged tool calls the new
+ * composition cannot make.
+ * @param agent - the live agent whose session to check.
+ * @returns true when no turn has started (the agent preset can still be changed).
+ */
+function sessionBlank(agent: Agent): boolean {
+  return !agent.session.events.some(event => event.type === 'turn/start')
+}
+
+/** The minimum agent-preset roster surface a live switch needs. */
+interface LivePresetService {
+  /** The preset one agent currently runs on, absent when it joined none. */
+  composedPreset(agentCtx: Context): string | undefined
+  /** Re-link one agent to another preset's standing composition. */
+  recompose(agentCtx: Context, id: string): Promise<{ id: string }>
+}
+
+/**
+ * Switch the live agent to another agent preset, honoring the blank-session
+ * gate: once a conversation starts, its history was produced under that
+ * preset's tools and cannot be re-linked. Mirror of the Web receiver's
+ * `agentPreset.select`.
+ * @param presets - the live-preset surface (recompose + composedPreset).
+ * @param agent - the live agent to switch.
+ * @param id - the target preset id.
+ * @returns the installed preset id, or `undefined` when refused (started or
+ * its composition unusable).
+ */
+async function selectAgentMode(
+  presets: LivePresetService | undefined,
+  agent: Agent,
+  id: string,
+): Promise<string | undefined> {
+  if (presets === undefined) return undefined
+  if (!sessionBlank(agent)) return undefined
+  try {
+    const preset = await presets.recompose(agent.ctx, id)
+    // Logged only after the swap commits: the log states what the agent runs,
+    // and a rejected mount leaves the previous composition.
+    agent.session.append('agent-preset/selected', { agentPreset: preset.id })
+    return preset.id
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -298,33 +427,50 @@ async function run(
   // Install the session-scoped selection into every created/resumed/switched
   // agent; the registry /model command switches it through agentModelSelection.
   const setup = (agentCtx: Context): void => { modelSelection.install(agentCtx, agentOptions) }
+  // The agent-preset roster service, when the CLI composition mounts one. Its
+  // presence decides whether sessions compose from a preset at all.
+  const presets = ctx.get('agentPresets')
 
   // Resolve which session to drive: explicit id, latest for this cwd, or fresh.
   let created: AgentHandle
   if (startup.resume === 'fresh') {
+    const composed = await composeFrom(presets, setup, startup.mode)
     created = await agents.create({
       sessionId: SessionId(`session-${randomUUID()}`),
-      meta: { cwd: startup.cwd },
+      // A fresh session names the requested preset, or the roster default when
+      // none was given; composeFrom resolves it before the boundary snapshots meta.
+      meta: { cwd: startup.cwd, ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }) },
       agentOptions,
-      setup,
+      setup: composed.setup,
     })
   } else {
     const sessionId = startup.resume === 'latest'
       ? await latestSessionForCwd(persistence, startup.cwd)
       : SessionId(startup.resume.sessionId)
-    created = sessionId === undefined
-      ? await agents.create({
+    if (sessionId === undefined || persistence === undefined) {
+      const composed = await composeFrom(presets, setup, startup.mode)
+      created = await agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
-        meta: { cwd: startup.cwd },
+        meta: { cwd: startup.cwd, ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }) },
         agentOptions,
-        setup,
+        setup: composed.setup,
       })
-      : await agents.resume({ resumeSessionId: sessionId, agentOptions, setup })
+    } else {
+      // Resume composes the preset the session recorded — resolved from the
+      // LOG, not the header, so a session that switched while blank runs its
+      // turns under the newer composition. Same reasoning as the Web surface.
+      const composed = await composeForResume(persistence, presets, setup, sessionId, startup.mode)
+      created = await agents.resume({ resumeSessionId: sessionId, agentOptions, setup: composed.setup })
+    }
   }
   currentHandle = created
-  // Seed the permission badge with the session's current preset.
+  // Seed the permission and agent-mode badges with the session's current values.
   const presetsSeed = ctx.get('permissionPresets')
   if (presetsSeed !== undefined) view.setPermission(presetsSeed.current(created.agent.session.events))
+  if (presets !== undefined) {
+    const mode = presets.composedPreset(created.agent.ctx)
+    if (mode !== undefined) view.setMode(mode)
+  }
   let onEvent = (session: Session, event: SessionEvent): void => {
     const handle = currentHandle
     if (handle === undefined) return
@@ -344,7 +490,10 @@ async function run(
     if (sessionId === handle.agent.session.id) return handle.agent
     let next: AgentHandle
     try {
-      next = await agents.resume({ resumeSessionId: sessionId, agentOptions, setup })
+      const composed = persistence === undefined
+        ? await composeFrom(presets, setup, startup.mode)
+        : await composeForResume(persistence, presets, setup, sessionId, startup.mode)
+      next = await agents.resume({ resumeSessionId: sessionId, agentOptions, setup: composed.setup })
     } catch (error) {
       view.notice(`cannot resume ${target}: ${error instanceof Error ? error.message : String(error)}`)
       return null
@@ -370,6 +519,22 @@ async function run(
     }))
   }
 
+  // Agent-preset mode switching, mirroring the Web surface: a roster that
+  // composes agents can re-link a still-blank live agent to another preset via
+  // `/mode <id>`; a started conversation refuses. Nothing is wired when the CLI
+  // deployment composes no presets.
+  const listAgentModes = async (): Promise<readonly string[]> => {
+    if (presets === undefined) return []
+    return (await presets.list()).map(preset => preset.id)
+  }
+  const switchAgentMode = async (target: string): Promise<string | undefined> => {
+    const handle = currentHandle
+    if (handle === undefined || presets === undefined) return undefined
+    const installed = await selectAgentMode(presets, handle.agent, target)
+    if (installed !== undefined) view.setMode(installed)
+    return installed
+  }
+
   // Route a slash command through the command registry (`ctx.commands`);
   // undefined when the registry is not composed or does not resolve the line.
   const commandsRegistry = ctx.get('commands')
@@ -389,6 +554,8 @@ async function run(
     sessions,
     listSessions,
     switchSession,
+    listAgentModes,
+    switchAgentMode,
     runCommand,
     recordPrompt: (text) => {
       if (text.trim() !== '' && promptHistory.at(-1) !== text) {

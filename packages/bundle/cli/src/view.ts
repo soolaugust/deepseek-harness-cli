@@ -22,6 +22,8 @@ export interface CliViewStore {
   notice(text: string): void
   /** Update the active permission preset for the badge. */
   setPermission(preset: string): void
+  /** Update the active agent preset for the mode badge. */
+  setMode(preset: string): void
   /** Clear the scroll region. */
   clear(): void
 }
@@ -244,6 +246,10 @@ export function createViewStore(): CliViewStore {
     },
     setPermission: (preset) => {
       state = { ...state, permission: preset }
+      emit()
+    },
+    setMode: (preset) => {
+      state = { ...state, mode: preset }
       emit()
     },
     clear: () => {

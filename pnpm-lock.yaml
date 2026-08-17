@@ -1267,6 +1267,9 @@ importers:
       '@deepseek-ai/dsh-agent-model-selection':
         specifier: workspace:^
         version: link:../../core/agent-model-selection
+      '@deepseek-ai/dsh-agent-presets':
+        specifier: workspace:^
+        version: link:../../preset/agent-presets
       '@deepseek-ai/dsh-commands':
         specifier: workspace:^
         version: link:../../interaction/commands

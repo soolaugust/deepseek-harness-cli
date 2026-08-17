@@ -39,6 +39,8 @@ export interface CliStartupValues {
   readonly resume: CliResumeChoice
   /** Permission preset; the interactive default asks per action. */
   readonly permission: CliPermission
+  /** Agent preset to compose the session's agent from, when the deployment has a preset roster. */
+  readonly mode?: string
   /** Whether to drive the terminal UI; `--no-interactive` prints plain lines. */
   readonly interactive: boolean
   /** Extra diagnostics on stderr. */
@@ -59,6 +61,7 @@ function cliCommand(): Command {
     .option('--cwd <path>', 'working directory for the session', process.cwd())
     .option('--resume [choice]', 'session to drive: latest (a bare --resume), fresh, or a session id; default is a brand-new session')
     .option('--permission <preset>', 'permission preset: read-only, workspace-write (default), or danger-full-access', 'workspace-write')
+    .option('--mode <preset>', 'agent preset to compose the session from (e.g. standard, code, memory-os); default depends on the deployment roster')
     .option('--no-interactive', 'do not start the terminal UI; print plain output (CI)')
     .option('--verbose', 'extra diagnostics on stderr')
     .addHelpText('after', `
@@ -67,6 +70,7 @@ Examples:
   dsh cli --resume                  resume the latest session for this directory
   dsh cli --resume session-xyz      resume a specific session by id
   dsh cli --permission read-only    read-only session
+  dsh cli --mode code               compose the session from the code agent preset
   dsh cli --no-interactive "hi"     plain output mode (CI)
 `)
 }
@@ -84,6 +88,7 @@ export function apply(ctx: Context): void {
       cwd: string
       resume?: string | boolean
       permission: string
+      mode?: string
       interactive: boolean
       verbose: boolean
     }>()
@@ -109,6 +114,7 @@ export function apply(ctx: Context): void {
       // exactOptionalPropertyTypes.
       ...(opts.model === undefined ? {} : { model: opts.model }),
       ...(opts.provider === undefined ? {} : { provider: opts.provider }),
+      ...(opts.mode === undefined ? {} : { mode: opts.mode }),
       cwd: opts.cwd,
       resume,
       permission: opts.permission as CliPermission,

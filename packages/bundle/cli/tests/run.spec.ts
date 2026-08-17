@@ -165,4 +165,56 @@ describe('runRepl', () => {
     expect(notices.some(text => text.includes('switched to session-b'))).toBe(true)
     expect(notices.some(text => text.includes('no such session: missing'))).toBe(true)
   })
+
+  it('lists agent modes and switches a blank agent through /mode', async () => {
+    const switchCalls: string[] = []
+    const notices: string[] = []
+    const agent = {
+      id: SessionId('session-test'),
+      session: { id: SessionId('session-test') } as Session,
+      whenIdle: () => Promise.resolve(),
+    } as unknown as Agent
+    const view = createViewStore()
+    view.subscribe(() => {
+      const last = view.getSnapshot().items.at(-1)
+      if (last?.kind === 'notice') notices.push(last.text)
+    })
+    const code = await runRepl({
+      agent,
+      view,
+      nextLine: scriptedInput(['/mode', '/mode code', '/mode bogus', '/exit']),
+      sessions: { flush: vi.fn(async (_session: Session) => true) },
+      listAgentModes: async () => ['standard', 'code', 'memory-os'],
+      switchAgentMode: async (target) => {
+        switchCalls.push(target)
+        return target === 'code' ? 'code' : undefined
+      },
+    })
+    expect(code).toBe(0)
+    expect(switchCalls).toEqual(['code', 'bogus'])
+    expect(notices.some(text => text.includes('standard, code, memory-os'))).toBe(true)
+    expect(notices.some(text => text.includes('mode → code'))).toBe(true)
+    expect(notices.some(text => text.includes('no such mode: bogus'))).toBe(true)
+  })
+
+  it('reports /mode unavailable when the deployment composes no presets', async () => {
+    const notices: string[] = []
+    const agent = {
+      whenIdle: () => Promise.resolve(),
+      session: { id: SessionId('session-test') } as Session,
+    } as unknown as Agent
+    const view = createViewStore()
+    view.subscribe(() => {
+      const last = view.getSnapshot().items.at(-1)
+      if (last?.kind === 'notice') notices.push(last.text)
+    })
+    const code = await runRepl({
+      agent,
+      view,
+      nextLine: scriptedInput(['/mode code', '/exit']),
+      sessions: { flush: vi.fn(async (_session: Session) => true) },
+    })
+    expect(code).toBe(0)
+    expect(notices.some(text => text.includes('/mode is unavailable'))).toBe(true)
+  })
 })

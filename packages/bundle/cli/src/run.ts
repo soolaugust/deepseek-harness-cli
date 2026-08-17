@@ -54,6 +54,17 @@ export interface CliReplDeps {
   /** List saved sessions for `/session`; absent hides the command's list. */
   listSessions?(): Promise<readonly CliSessionRef[]>
   /**
+   * List agent-preset modes, for `/mode` with no argument. Absent hides the
+   * command's available-mode listing.
+   */
+  listAgentModes?(): Promise<readonly string[]>
+  /**
+   * Switch the live blank agent to another agent preset, for `/mode`. Returns
+   * the installed preset id, or undefined when refused (conversation started or
+   * the preset is unusable) or unavailable.
+   */
+  switchAgentMode?(target: string): Promise<string | undefined>
+  /**
    * Switch the live agent to another saved session. Returns the new agent on
    * success or null when the target does not exist / cannot resume.
    */
@@ -118,6 +129,31 @@ export async function runRepl(deps: CliReplDeps): Promise<number> {
           deps.view.notice(`switched to ${next.id}`)
         } else {
           deps.view.notice(`no such session: ${target}`)
+        }
+        continue
+      }
+      case 'mode': {
+        if (line.args.length === 0) {
+          const list = await deps.listAgentModes?.() ?? []
+          deps.view.notice(list.length === 0
+            ? 'no agent presets configured'
+            : `available modes: ${list.join(', ')}`)
+          continue
+        }
+        const target = line.args[0]
+        if (target === undefined) {
+          deps.view.notice('/mode needs a preset id')
+          continue
+        }
+        if (deps.switchAgentMode === undefined) {
+          deps.view.notice('/mode is unavailable in this deployment')
+          continue
+        }
+        const installed = await deps.switchAgentMode(target)
+        if (installed !== undefined) {
+          deps.view.notice(`mode → ${installed}`)
+        } else {
+          deps.view.notice(`no such mode: ${target} (or the conversation has already started)`)
         }
         continue
       }

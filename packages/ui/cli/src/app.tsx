@@ -10,7 +10,7 @@ import { Box, Text as InkText, useInput } from 'ink'
 import { useCliView, type CliViewStoreLike } from './hooks/use-cli-view.ts'
 import { isCancelKey, isExitKey } from './keys.ts'
 import { ScrollRegion } from './scroll-region.tsx'
-import { PermissionBadge, SessionStats, StatusBar } from './status-bar.tsx'
+import { ModeBadge, PermissionBadge, SessionStats, StatusBar } from './status-bar.tsx'
 import { CliTextInput } from './text-input.tsx'
 
 /** The props the io wires from the driver's view store and interaction hooks. */
@@ -80,6 +80,7 @@ export function CliApp({ store, onSubmit, onCtrlC, onExit, onHistoryUp, onHistor
           />
         </Box>
       </Box>
+      <ModeBadge view={view} />
       <PermissionBadge view={view} />
     </Box>
   )

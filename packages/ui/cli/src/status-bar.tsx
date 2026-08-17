@@ -140,3 +140,17 @@ export function PermissionBadge({ view }: { view: CliViewState }) {
     </Box>
   )
 }
+
+/**
+ * The agent-mode badge rendered under the input bar. Only the roster that
+ * composes an agent sets a mode; a deployment without one shows nothing.
+ * @param view - the current view state carrying the active agent preset.
+ */
+export function ModeBadge({ view }: { view: CliViewState }) {
+  if (view.mode === undefined) return <Box flexShrink={0} />
+  return (
+    <Box flexShrink={0} paddingLeft={1}>
+      <Text dimColor>mode: {view.mode}</Text>
+    </Box>
+  )
+}

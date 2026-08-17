@@ -47,4 +47,6 @@ export interface CliViewState {
   readonly stats: CliStats
   /** The active permission preset, e.g. `workspace-write`. */
   readonly permission: string
+  /** The active agent preset, e.g. `standard`; absent when no roster composed one. */
+  readonly mode?: string
 }

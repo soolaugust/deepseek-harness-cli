@@ -46,6 +46,25 @@ describe('cli profile smoke', () => {
     // A bare `dsh cli` starts a brand-new session; `--resume` opts into the latest.
     expect(result.stdout).toContain('brand-new interactive session')
     expect(result.stdout).toContain('dsh cli --resume')
+    expect(result.stdout).toContain('--mode')
+    expect(result.stdout).toContain('dsh cli --mode code')
+    expect(result.stderr).toBe('')
+  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
+
+  it('accepts --mode on a fresh session and exits cleanly on a closed stdin', async () => {
+    const result = await runLoaderSmoke({
+      label: 'cli profile --mode smoke',
+      tempDirPrefix: 'cli-profile-mode-',
+      binScript: dshBinScript,
+      configPath,
+      binArgs: ['cli', '--no-interactive', '--mode', 'code'],
+      tsconfigPath,
+      env: {
+        DSH_TELEMETRY_DISABLED: '1',
+        NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+      },
+    })
+    expect(result.stdout).toBe('')
     expect(result.stderr).toBe('')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 })
