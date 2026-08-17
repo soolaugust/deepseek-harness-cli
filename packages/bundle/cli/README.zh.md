@@ -2,13 +2,13 @@
 
 [English](README.md) | 中文
 
-dsh 交互式终端组合包。[`cordis.patch.yml`](cordis.patch.yml) 直接叠加在 [`dsh-base`](../base/README.md) 之上：提供编码 persona 和工具模式、禁用 HMR（热模块替换）、将 Code Mode 的 worker 作为核心执行能力挂载，并插入本包的 `cli-startup` 提供方和 `cli-runner` 插件。它不挂载任何 Host、HTTP server、Web runtime 或浏览器插件。
+dsh 交互式终端组合包。[`cordis.patch.yml`](cordis.patch.yml) 直接叠加在 [`dsh-base`](../base/README.md) 之上：提供编码 persona 和工具模式、禁用 HMR（热模块替换）、将 Code Mode 的 worker 作为核心执行能力挂载、插入智能体预设清单（默认 `standard`），并插入本包的 `cli-startup` 提供方和 `cli-runner` 插件。它不挂载任何 Host、HTTP server、Web runtime 或浏览器插件。
 
 Loader 结算后，runner 解析本次调用要驱动的会话——当前工作目录的最新持久化会话、具名 id（`--resume <id>`）或全新会话（`--resume fresh`）——通过 `ctx.agents` 创建或恢复它，把视图存储订阅到该 agent 的 `session/event` 事件流，并驱动 REPL 直到用户输入 `/exit`。每个提示作为普通用户消息经 `agent.followup` 提交；每回合停稳后、下一个提示前对 Session 执行 flush。终端渲染是一个可注入的 io：本包携带明文 io（读 stdin、打印已提交的视图项，供 `--no-interactive` 使用），ink TUI io 在 [`@deepseek-ai/dsh-cli-ui`](../../ui/cli/README.md)。退出请求经启动器提供的 `ctx.appExit` 宿主钩子（[`dsh-cmdline`](../../boot/cmdline/README.md)）。
 
 ## 智能体预设
 
-当 CLI profile 的组合挂载了 [`agent-presets`](../../preset/agent-presets/README.md) 清单时，每个会话都从某个预设组合而成：预设决定模型所见到的工具 schema 与提示词片段。`dsh cli --mode <preset>` 把全新或恢复的会话固定到该预设（省略时默认采用清单自身的默认预设）；恢复会话时，runner 从会话日志重建其记录的预设，而非仅看创建时的头部，因此空白期内切换过预设的会话会以更新的组合运行其后续回合。会话内，`/mode <preset>` 把仍处于空白状态的 agent 重新链接到另一预设，`/mode` 无参数时列出清单——两者都镜像 Web 面的智能体预设切换，即会话开始后拒绝切换。当部署没有挂载任何 `agent-presets` 行时，清单不组合任何预设，此时 `--mode` 选项无效果。
+cli 组合包挂载了 [`agent-presets`](../../preset/agent-presets/README.md) 清单，其随附预设位于 `config/agent-presets/`，默认预设为 `standard`，因此每个会话都从某个预设组合而成：预设决定模型所见到的工具 schema 与提示词片段。`dsh cli --mode <preset>` 把全新或恢复的会话固定到该预设（省略时默认采用清单自身的默认预设）；恢复会话时，runner 从会话日志重建其记录的预设，而非仅看创建时的头部，因此空白期内切换过预设的会话会以更新的组合运行其后续回合。会话内，`/mode <preset>` 把仍处于空白状态的 agent 重新链接到另一预设，`/mode` 无参数时列出清单——两者都镜像 Web 面的智能体预设切换，即会话开始后拒绝切换。替换掉清单或未挂载任何 `agent-presets` 行的 profile 不组合任何预设，此时 `--mode` 与 `/mode` 均无效果。
 
 
 ## 模型体验

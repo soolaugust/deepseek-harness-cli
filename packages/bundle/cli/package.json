@@ -59,6 +59,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-cli-ui": "workspace:^",
     "@deepseek-ai/dsh-cmdline": "workspace:^",
     "@deepseek-ai/dsh-code-runtime-worker-thread": "workspace:^",

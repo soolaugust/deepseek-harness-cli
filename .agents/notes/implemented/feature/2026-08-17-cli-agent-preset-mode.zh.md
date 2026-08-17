@@ -22,19 +22,18 @@ Web 界面为每个会话选择 **agent preset**：`standard`、`code`、`celery
 
 ## 备选方案
 
-**默认完全对齐 Web（CLI profile 挂载清单）** ——本变更中被否决。它会翻转出厂默认（基于 turn 的 `dsh cli` 开始组合 preset），且要做得干净需要 profile 层的基础拆分，以避免 preset 所有的那几行（`agent-preset`，以及 `dsh-base` 已按 agent 提供的 skill/tool/plan 行）重复。影响面更大；已延后（见后果）。
-
 **清单按硬编码 id 取键** ——被否决：`--mode`/`/mode` 走清单自己的 `resolve`，默认值与行为保持显式（`resolve(request)`，而非隐式的 `?? default`），符合显式默认约定。
 
 ## 后果
 
-`dsh cli -m/--mode <id>` 与 `/mode` 以 Web 的 blank 门与日志恢复语义在 CLI 上呈现 agent preset 选择。机制是可选启用的：若 profile 没有 agent-presets 行，`--mode` 与 `/mode` 无效，`dsh cli` 完全按先前运行——因此本变更对当前交付的 profile 零风险上架。
+cli 组合包挂载了 `agent-presets` 清单（`default: standard`，出厂预设位于 `config/agent-presets/`，`system` 信任，与用户的 `$DSH_HOME/.agent-presets` 并存），因此 `dsh cli` 默认让每个会话都从某个 preset 组合而成。`dsh cli -m/--mode <id>` 与 `/mode` 以 Web 的 blank 门与日志恢复语义在 CLI 上呈现 agent preset 选择。替换掉清单或未挂载任何 `agent-presets` 行的 profile 会保持 `--mode`/`/mode` 无效，`dsh cli` 行为上不组合 preset。
 
-清单挂载选项（在 cli bundle 加一个 `agent-presets` 行从而默认激活模式选择）**经实测后否决**：出厂 preset 都无法在终端宿主上稳定组合。`standard`、`code`、`celery`、`cordis`、`memory-os` 各自组合失败（其工具行等待 `tools`、`shell`、`fs`、`systemPrompt` 等宿主能力服务，而 CLI profile 不会把这些暴露给 preset 的稳定组合），自足的 `minimal` 也不稳定（`persona` 偶发等待 `systemPrompt`）。同样的 preset 在 Web 宿主（base + `web.cordis.yml`）上可靠组合，说明出厂 preset 是 Web 宿主组合；要让清单挂载默认可用，需要此处延后的 profile 层基础拆分，因此 CLI profile 暂时维持可选启用。
+本变更的早期版本曾以实测证据否决清单挂载：`--mode`/`/mode` 与默认 `standard` 都无法挂载（其工具行等待 `tools`、`shell`、`fs`、`systemPrompt` 等宿主能力服务，而 CLI profile 未把这些暴露给 preset 的稳定组合）。该失败**仅出现在 `src`（tsx）启动器冒烟路径**——`runLoaderSmoke` 在 `src` 模式下把 `@deepseek-ai/cordis` 与 preset parcel 加载为重复的 ESM 模块实例，从而使 preset 隔离 realm 与宿主 realm 分离。同样的组合在构建产物（`lib` 纯 Node，即 CI/生产路径）上可让每个出厂 preset 可靠挂载：`smoke.e2e.ts` 的 preset 用例以空 stderr 通过，独立的构建产物 `dsh cli --mode <preset>` 也可干净启动。因此默认挂载清单对生产是安全的；只有使用 tsx 源码启动冒烟一个组合 preset 的 profile 时才会看到这个伪 realm 分裂。
 
 ## 验证
 
 - 单元：`run.spec.ts` 的 `/mode` 列出清单 id 并切换 blank 会话，对拒绝的目标提示 `no such mode`；视图 store 记录 `mode` 供状态徽标使用。
-- Loader 冒烟（`smoke.e2e.ts`）：`dsh cli -m code` 在无清单的干净树上解析并运行（flag 无效），证明未挂载 preset 时该 flag 不会破坏组合。
-- 清单挂载探针：向 cli bundle 添加 `agent-presets` 行（`default: standard`）并为每个出厂 preset 启动 profile——`standard`、`code`、`celery`、`cordis`、`memory-os`、`minimal`。除 `minimal` 外全部挂载失败（6–8 行工具等待宿主能力）；`minimal` 也只是间歇性挂载（`persona` 等待 `systemPrompt`）。同样的 preset 在 Web 宿主上都能挂载，确认缺口因宿主而异。
-- 手动：在有清单的 profile 上 `dsh cli --mode code` 会以 `code` 创建会话；`/mode` 列出并切换 blank 会话、拒绝已开始的会话。
+- Loader 冒烟（`smoke.e2e.ts`，按 CI 以 `lib` 模式运行）：`dsh cli` 组合默认 `standard`，`dsh cli --mode code` 组合 `code`，无清单的 profile 保持 flag 无效——均以空 stderr 干净退出。
+- tsx `src` 模式备忘：同样的组合预设冒烟在 `src` 启动下会以 `row(s) did not activate` 失败；这是已知的 tsx 模块重复产物，CI 并不走此路径。
+- `apps/cli/src/profile-boot.ts` 中的部署覆盖会把出厂 preset 根追加到组合所挂载的那个 `agent-presets` 行，因此 bundle 插入与出厂 preset 一起解析。
+- 手动：在构建产物 `dsh` 上，`cli --mode code` 以 `code` 创建会话；`--mode bogus` 大声失败并列出清单可用 id；`/mode` 列出并切换 blank 会话、拒绝已开始的会话。

@@ -412,6 +412,8 @@ export interface CliStartupValues {
   readonly resume: CliResumeChoice
   /** Permission preset; the interactive default asks per action. */
   readonly permission: CliPermission
+  /** Agent preset to compose the session's agent from, when the deployment has a preset roster. */
+  readonly mode?: string
   /** Whether to drive the terminal UI; `--no-interactive` prints plain lines. */
   readonly interactive: boolean
   /** Extra diagnostics on stderr. */

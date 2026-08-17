@@ -30,7 +30,18 @@
   config:
     policy: !!js "(ctx.cliStartup?.permission ?? 'workspace-write') === 'danger-full-access' ? 'never' : 'ask'"
 
+# The preset roster: a `--mode`/`-m` argument or an interactive `/mode` command
+# selects the agent preset to compose this session from, mirroring the Web
+# surface's preset seat. `config/agent-presets/` ships with the deployment and
+# is read-only (`system` trust); `$DSH_HOME/.agent-presets` is where a person
+# or an agent authors their own. The default falls back to the deployment
+# roster when `dsh cli` runs unconfigured — like the Web surface, `standard`.
 - insert:
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: standard
+
     # Code Mode is a core execution capability, not a Web component.
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'

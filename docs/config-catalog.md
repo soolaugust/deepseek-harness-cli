@@ -412,6 +412,8 @@ export interface CliStartupValues {
   readonly resume: CliResumeChoice
   /** Permission preset; the interactive default asks per action. */
   readonly permission: CliPermission
+  /** Agent preset to compose the session's agent from, when the deployment has a preset roster. */
+  readonly mode?: string
   /** Whether to drive the terminal UI; `--no-interactive` prints plain lines. */
   readonly interactive: boolean
   /** Extra diagnostics on stderr. */
@@ -428,7 +430,7 @@ export type CliResumeChoice = 'latest' | 'fresh' | {
 export type CliPermission = 'read-only' | 'workspace-write' | 'danger-full-access'
 ```
 
-Source: [`packages/bundle/cli/src/index.ts:47`](../packages/bundle/cli/src/index.ts)
+Source: [`packages/bundle/cli/src/index.ts:51`](../packages/bundle/cli/src/index.ts)
 
 <a id="deepseek-aidsh-client-connection"></a>
 
