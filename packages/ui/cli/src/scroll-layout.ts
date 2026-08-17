@@ -45,12 +45,20 @@ interface Char {
   color: RunColor | undefined
 }
 
-/** Wide glyphs render as two terminal columns (mirrors status-bar). */
+/**
+ * The terminal-column width of one glyph: wide glyphs render as two columns.
+ * @param ch - the single character to measure.
+ * @returns 2 for wide glyphs, otherwise 1.
+ */
 export function charWidth(ch: string): number {
   return /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/u.test(ch) ? 2 : 1
 }
 
-/** Width of a plain string in terminal columns. */
+/**
+ * The width of a plain string in terminal columns.
+ * @param text - the string to measure.
+ * @returns the summed column width of every glyph in `text`.
+ */
 export function textWidth(text: string): number {
   let w = 0
   for (const ch of text) w += charWidth(ch)
@@ -365,8 +373,13 @@ export function viewportSlice(total: number, height: number, offset: number): [n
   return [start, Math.min(total, start + height)]
 }
 
-/** Flatten a markdown string into styled terminal lines, one blank line
- * separating adjacent blocks. */
+/**
+ * Flatten a markdown string into styled terminal lines, one blank line
+ * separating adjacent blocks.
+ * @param content - the markdown source to render.
+ * @param width - the terminal width in columns.
+ * @returns the styled lines, one `RenderLine` per terminal row.
+ */
 export function markdownLines(content: string, width: number): RenderLine[] {
   const tokens = marked.lexer(content)
   const out: RenderLine[] = []
