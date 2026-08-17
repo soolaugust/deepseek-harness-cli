@@ -360,6 +360,24 @@ export function scrollStep(
 }
 
 /**
+ * Whether an ink `useInput` raw input is an SGR mouse wheel event, and which
+ * way the wheel turned. With mouse mode enabled (`\x1b[?1000h\x1b[?1006h`) a
+ * terminal sends `\x1b[<64;…M` (wheel up) / `\x1b[<65;…M` (wheel down) instead
+ * of arrow keys, so the scroll region can consume the wheel and the text input
+ * must not treat it as printable input.
+ * @param input - the raw input ink delivered.
+ * @returns 1 for a wheel-up event (scroll back), -1 for wheel-down, 0 otherwise.
+ */
+export function parseMouseWheel(input: string): 0 | 1 | -1 {
+  const m = /^\[<(\d+);\d+;\d+[Mm]$/.exec(input)
+  if (m === null) return 0
+  const button = Number(m[1])
+  if (button === 64) return 1 // wheel up
+  if (button === 65) return -1 // wheel down
+  return 0
+}
+
+/**
  * The inclusive window slice for the given offset: the trailing `total − offset`
  * lines, capped to `height`. Offset 0 is the newest content (the bottom).
  * @param total - the total number of lines.

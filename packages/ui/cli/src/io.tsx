@@ -58,7 +58,14 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
   // terminal: the input bar stays pinned at the bottom and the mouse wheel
   // scrolls inside the ink UI instead of the terminal's own history. Only on a
   // real TTY — piped/CI output must not be polluted with screen-switch codes.
-  if (process.stdout.isTTY) process.stdout.write('\x1b[?1049h')
+  if (process.stdout.isTTY) {
+    process.stdout.write('\x1b[?1049h')
+    // SGR mouse mode so the wheel arrives as `\x1b[<64/65;…M` events that the
+    // scroll region parses, instead of being translated to arrow keys that the
+    // input consumes as history. `?1000h` enables button events, `?1006h` is
+    // the SGR encoding (coordinates + precise button ids).
+    process.stdout.write('\x1b[?1000h\x1b[?1006h')
+  }
   const instance = render(
     <CliApp
       store={options.view}
@@ -87,8 +94,12 @@ export function createInteractiveIo(options: InteractiveIoOptions): InteractiveI
     dispose: () => {
       disposed = true
       instance.unmount()
-      // Leave the alternate screen, restoring the terminal's prior content.
-      if (process.stdout.isTTY) process.stdout.write('\x1b[?1049l')
+      // Leave the alternate screen, restoring the terminal's prior content,
+      // and disable mouse mode so the wheel scrolls the shell's own history.
+      if (process.stdout.isTTY) {
+        process.stdout.write('\x1b[?1000l\x1b[?1006l')
+        process.stdout.write('\x1b[?1049l')
+      }
     },
   }
 }

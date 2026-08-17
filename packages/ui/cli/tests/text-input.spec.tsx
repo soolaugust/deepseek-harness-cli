@@ -41,4 +41,11 @@ describe('applyKeypress', () => {
   it('inserts printable input at the cursor', () => {
     expect(applyKeypress('x', {}, 'ab', 1)).toEqual({ value: 'axb', offset: 2 })
   })
+
+  it('ignores SGR mouse wheel events instead of inserting them', () => {
+    // The scroll region consumes the wheel; the input must not insert the raw
+    // escape sequence.
+    expect(applyKeypress('\x1b[<64;10;20M', {}, 'ab', 1)).toEqual({})
+    expect(applyKeypress('\x1b[<65;10;20M', {}, 'ab', 1)).toEqual({})
+  })
 })

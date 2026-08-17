@@ -1,7 +1,7 @@
 /** The transcript line model: width-aware wrapping, tool folding, spacing. */
 
 import { describe, expect, it } from 'vitest'
-import { charWidth, layoutItems, markdownLines, scrollStep, textWidth, truncateToColumns, viewportSlice, wrapText } from '../src/scroll-layout.ts'
+import { charWidth, layoutItems, markdownLines, parseMouseWheel, scrollStep, textWidth, truncateToColumns, viewportSlice, wrapText } from '../src/scroll-layout.ts'
 import type { CliViewItem } from '../src/types.ts'
 
 /** Collapse a rendered line to its plain text for assertions. */
@@ -87,6 +87,23 @@ describe('scrollStep', () => {
   })
   it('leaves the offset unchanged for non-paging keys', () => {
     expect(scrollStep(10, {}, 10, 50)).toBe(10)
+  })
+})
+
+describe('parseMouseWheel', () => {
+  it('maps SGR wheel-up/down sequences to scroll direction', () => {
+    expect(parseMouseWheel('\x1b[<64;10;20M')).toBe(1)
+    expect(parseMouseWheel('\x1b[<65;10;20M')).toBe(-1)
+  })
+  it('accepts the release variant and ignores non-wheel buttons', () => {
+    expect(parseMouseWheel('\x1b[<64;10;20m')).toBe(1)
+    expect(parseMouseWheel('\x1b[<0;10;20M')).toBe(0) // left click
+    expect(parseMouseWheel('\x1b[<66;10;20M')).toBe(0) // wheel right
+  })
+  it('ignores ordinary input', () => {
+    expect(parseMouseWheel('a')).toBe(0)
+    expect(parseMouseWheel('\x1b[A')).toBe(0)
+    expect(parseMouseWheel('')).toBe(0)
   })
 })
 

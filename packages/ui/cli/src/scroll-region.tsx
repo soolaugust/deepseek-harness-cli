@@ -15,7 +15,7 @@
 import * as React from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
 import type { CliViewState } from './types.ts'
-import { layoutItems, foldRows, scrollStep, viewportSlice } from './scroll-layout.ts'
+import { layoutItems, foldRows, parseMouseWheel, scrollStep, viewportSlice } from './scroll-layout.ts'
 import type { StyledRun } from './scroll-layout.ts'
 
 /** Rows reserved above the scroll region by the status line, stats, and input. */
@@ -78,6 +78,14 @@ export function ScrollRegion({ view }: { view: CliViewState }) {
   useInput((rawInput, key) => {
     if (key.ctrl && rawInput === 'o') {
       setExpanded(runs => runs.map(expanded => !expanded))
+      return
+    }
+    // Mouse wheel (SGR mouse mode): wheel up scrolls back, wheel down toward
+    // the newest content, one viewport per event.
+    const wheel = parseMouseWheel(rawInput)
+    if (wheel !== 0) {
+      const next = wheel > 0 ? Math.min(maxOffset, offsetRef.current + height) : Math.max(0, offsetRef.current - height)
+      if (next !== offsetRef.current) setOffset(next)
       return
     }
     const next = scrollStep(offsetRef.current, key, height, maxOffset)
