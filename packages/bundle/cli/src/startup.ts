@@ -57,14 +57,14 @@ function cliCommand(): Command {
     .option('--model <model>', 'override the model for this session (e.g. deepseek-v4-flash)')
     .option('--provider <provider>', 'override the provider for this session')
     .option('--cwd <path>', 'working directory for the session', process.cwd())
-    .option('--resume <choice>', 'session to drive: latest (default), fresh, or a session id', 'latest')
+    .option('--resume [choice]', 'session to drive: latest (a bare --resume), fresh, or a session id; default is a brand-new session')
     .option('--permission <preset>', 'permission preset: read-only, workspace-write (default), or danger-full-access', 'workspace-write')
     .option('--no-interactive', 'do not start the terminal UI; print plain output (CI)')
     .option('--verbose', 'extra diagnostics on stderr')
     .addHelpText('after', `
 Examples:
-  dsh cli                           start an interactive session (resume the latest for this directory)
-  dsh cli --resume fresh            start a brand-new session
+  dsh cli                           start a brand-new interactive session
+  dsh cli --resume                  resume the latest session for this directory
   dsh cli --resume session-xyz      resume a specific session by id
   dsh cli --permission read-only    read-only session
   dsh cli --no-interactive "hi"     plain output mode (CI)
@@ -82,14 +82,22 @@ export function apply(ctx: Context): void {
       model?: string
       provider?: string
       cwd: string
-      resume: string
+      resume?: string | boolean
       permission: string
       interactive: boolean
       verbose: boolean
     }>()
-    const resume: CliResumeChoice = opts.resume === 'fresh' || opts.resume === 'latest'
-      ? opts.resume
-      : { sessionId: opts.resume }
+    // A bare `--resume` (commander delivers boolean `true`) resumes the latest
+    // session for this cwd; `--resume fresh` starts a new one; a string value
+    // is a specific session id. Absent the flag, the default is a brand-new
+    // session. Commander never delivers `false` for an optional-value option.
+    const resume: CliResumeChoice = opts.resume === true
+      ? 'latest'
+      : opts.resume === undefined || opts.resume === 'fresh'
+        ? 'fresh'
+        : typeof opts.resume === 'string' && opts.resume === 'latest'
+          ? 'latest'
+          : { sessionId: typeof opts.resume === 'string' ? opts.resume : 'latest' }
     if (opts.cwd === '') {
       program.error('error: --cwd needs a path')
     }

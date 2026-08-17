@@ -54,7 +54,7 @@ export const Config: z<Config> = z.object({
     model: z.string(),
     provider: z.string(),
     cwd: z.string().default(process.cwd()),
-    resume: z.union([z.const('latest'), z.const('fresh'), z.object({ sessionId: z.string() })]).default('latest'),
+    resume: z.union([z.const('latest'), z.const('fresh'), z.object({ sessionId: z.string() })]).default('fresh'),
     permission: z.union(['read-only', 'workspace-write', 'danger-full-access'] as const).default('workspace-write'),
     interactive: z.boolean().default(true),
     verbose: z.boolean().default(false),

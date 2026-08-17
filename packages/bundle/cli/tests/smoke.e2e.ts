@@ -43,6 +43,9 @@ describe('cli profile smoke', () => {
     })
     expect(result.stdout).toContain('dsh cli')
     expect(result.stdout).toContain('--resume')
+    // A bare `dsh cli` starts a brand-new session; `--resume` opts into the latest.
+    expect(result.stdout).toContain('brand-new interactive session')
+    expect(result.stdout).toContain('dsh cli --resume')
     expect(result.stderr).toBe('')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 })
