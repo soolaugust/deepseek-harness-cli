@@ -340,6 +340,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Layers the default ModelSelection through settings so direct and Host-backed Agent entry points share one state owner.',
   },
   {
+    key: 'agentModelSelection',
+    pkg: 'agent-model-selection',
+    title: 'Per-Agent model selection reference',
+    mode: 'core',
+    consumers: ['agent-model-selection', 'agent-default-model'],
+    note: 'Owns one process-local ModelSelectionRef per Agent, exposing install/ref for the command plane and model routes.',
+  },
+  {
     key: 'agentLoop',
     pkg: 'agent-loop',
     title: 'Concrete loop driver',

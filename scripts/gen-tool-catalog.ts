@@ -58,6 +58,7 @@ import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
+import * as ToolCeleryHarness from '@deepseek-ai/dsh-tool-celery-harness'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
@@ -517,6 +518,22 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-celery-harness',
+    dir: 'tool-celery-harness',
+    source: 'packages/guard/tool-celery-harness/src/index.ts',
+    requires: ['ctx.tools', 'ctx.subprocess'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // The tools inject `subprocess`; registration itself never spawns, so the
+      // real local service is inert here — it only needs to exist for the
+      // plugin's `inject` to resolve.
+      await ctx.plugin(LocalSubprocessRuntime)
+      await ctx.plugin(ToolCeleryHarness, {})
+    },
+    note:
+      'The celery reliability-harness tools run deterministic python checks (goal gate, verifier calibration, telemetry, decision, fixation) through the subprocess seam and return their text verdicts.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-workflow',

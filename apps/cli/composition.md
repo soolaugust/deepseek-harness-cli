@@ -32,6 +32,8 @@ flowchart LR
   cfg --> plugin_dsh_base_agent
   plugin_dsh_base_agent_default_model["agent-default-model<br/>@deepseek-ai/dsh-agent-default-model"]
   cfg --> plugin_dsh_base_agent_default_model
+  plugin_dsh_base_agent_model_selection["agent-model-selection<br/>@deepseek-ai/dsh-agent-model-selection"]
+  cfg --> plugin_dsh_base_agent_model_selection
   plugin_dsh_base_jobs["jobs<br/>@deepseek-ai/dsh-jobs-local"]
   cfg --> plugin_dsh_base_jobs
   plugin_dsh_base_llm_retry["llm-retry<br/>@deepseek-ai/dsh-llm-retry"]
@@ -108,6 +110,8 @@ flowchart LR
   cfg --> plugin_dsh_base_compaction_basic
   plugin_dsh_base_command_compact["command-compact<br/>@deepseek-ai/dsh-command-compact"]
   cfg --> plugin_dsh_base_command_compact
+  plugin_dsh_base_command_model["command-model<br/>@deepseek-ai/dsh-command-model"]
+  cfg --> plugin_dsh_base_command_model
   plugin_dsh_base_subagent["subagent<br/>@deepseek-ai/dsh-subagent"]
   cfg --> plugin_dsh_base_subagent
   plugin_dsh_base_subagent_spawn_in_process["subagent-spawn-in-process<br/>@deepseek-ai/dsh-subagent-spawn-in-process"]
@@ -180,6 +184,7 @@ flowchart LR
 | `user-questions` | `@deepseek-ai/dsh-user-questions` |
 | `agent` | `@deepseek-ai/dsh-agent` |
 | `agent-default-model` | `@deepseek-ai/dsh-agent-default-model` |
+| `agent-model-selection` | `@deepseek-ai/dsh-agent-model-selection` |
 | `jobs` | `@deepseek-ai/dsh-jobs-local` |
 | `llm-retry` | `@deepseek-ai/dsh-llm-retry` |
 | `settings` | `@deepseek-ai/dsh-settings-file` |
@@ -218,6 +223,7 @@ flowchart LR
 | `token-meter` | `@deepseek-ai/dsh-token-meter` |
 | `compaction-basic` | `@deepseek-ai/dsh-compaction-basic` |
 | `command-compact` | `@deepseek-ai/dsh-command-compact` |
+| `command-model` | `@deepseek-ai/dsh-command-model` |
 | `subagent` | `@deepseek-ai/dsh-subagent` |
 | `subagent-spawn-in-process` | `@deepseek-ai/dsh-subagent-spawn-in-process` |
 | `subagent-fork-in-process` | `@deepseek-ai/dsh-subagent-fork-in-process` |

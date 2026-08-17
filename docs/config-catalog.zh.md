@@ -1470,6 +1470,41 @@ export type Config = LocalConfig
 
 来源：[`packages/shell/pwsh-sandbox/src/index.ts:40`](../packages/shell/pwsh-sandbox/src/index.ts)
 
+<a id="deepseek-aidsh-reliability-guard"></a>
+
+## `@deepseek-ai/dsh-reliability-guard`
+
+依赖：`tools` · `agents`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time checks in `apply` (a non-integer `repeatThreshold`, a value below
+ * 1, or a blank `goalMarker` throws at plugin load, never a silent fall-back).
+ */
+export interface Config {
+  /** Deny write tools until the agent states its goal (default `false`). */
+  enforceGoalGate?: boolean
+  /** Consecutive failures of one tool that inject the attribution reminder (default `3`). */
+  repeatThreshold?: number
+  /** Inject the celery harness rules into the model prompt (default `false`). */
+  injectPrompt?: boolean
+  /**
+   * `*`-wildcard tool-name patterns classified as write operations for the
+   * goal gate. Empty means the built-in default set applies.
+   */
+  writeTools?: string[]
+  /**
+   * Marker text that counts a model statement as the goal declaration. The
+   * goal gate stays closed until an assistant message contains it (default
+   * `GOAL:`).
+   */
+  goalMarker?: string
+}
+```
+
+来源： [`packages/guard/reliability-guard/src/index.ts:30`](../packages/guard/reliability-guard/src/index.ts)
+
 <a id="deepseek-aidsh-repeat-tool-reminder"></a>
 
 ## `@deepseek-ai/dsh-repeat-tool-reminder`
@@ -2415,6 +2450,28 @@ export interface Config {
 
 来源：[`packages/shell/tool-bash-persistent/src/index.ts:405`](../packages/shell/tool-bash-persistent/src/index.ts)
 
+<a id="deepseek-aidsh-tool-celery-harness"></a>
+
+## `@deepseek-ai/dsh-tool-celery-harness`
+
+依赖：`tools` · `subprocess`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time checks in `apply` (an empty `celeryToolsDir` or `pythonPath` throws
+ * at plugin load, never a silent fall-back to defaults).
+ */
+export interface Config {
+  /** Directory holding the celery python scripts (default `/home/mi/ssd/codes/celery/tools`). */
+  celeryToolsDir?: string
+  /** Executable used to run the scripts (default `python3`). */
+  pythonPath?: string
+}
+```
+
+来源： [`packages/guard/tool-celery-harness/src/index.ts:35`](../packages/guard/tool-celery-harness/src/index.ts)
+
 <a id="deepseek-aidsh-tool-fs"></a>
 
 ## `@deepseek-ai/dsh-tool-fs`
@@ -3069,6 +3126,7 @@ export interface Config {
 这些插件通过 `cordis.yml` 中不含 `config:` 块的条目加载；它们未声明任何配置接口。
 
 - `@deepseek-ai/dsh-agent`（[`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts)）
+- `@deepseek-ai/dsh-agent-model-selection`（[`packages/core/agent-model-selection/src/index.ts`](../packages/core/agent-model-selection/src/index.ts)）
 - `@deepseek-ai/dsh-api-gateway` — 需要 `typert`（[`packages/api/gateway/src/index.ts`](../packages/api/gateway/src/index.ts)）
 - `@deepseek-ai/dsh-api-remotes`（[`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts)）
 - `@deepseek-ai/dsh-client-locale`（[`packages/client/locale/src/index.ts`](../packages/client/locale/src/index.ts)）
@@ -3106,6 +3164,7 @@ export interface Config {
 - `@deepseek-ai/dsh-command-compact` — 需要 `commands` · `compact`（[`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts)）
 - `@deepseek-ai/dsh-command-feedback` — 需要 `commands`（[`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts)）
 - `@deepseek-ai/dsh-command-goal` — 需要 `commands` · `goals`（[`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts)）
+- `@deepseek-ai/dsh-command-model` — 需要 `commands` · `agentModelSelection` · `agentDefaultModel`（[`packages/core/command-model/src/index.ts`](../packages/core/command-model/src/index.ts)）
 - `@deepseek-ai/dsh-commands`（[`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts)）
 - `@deepseek-ai/dsh-cordis-client-runner`（[`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts)）
 - `@deepseek-ai/dsh-fs-e2b` — 需要 `e2b`（[`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts)）

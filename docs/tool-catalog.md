@@ -37,6 +37,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent-report` | `report` | `ctx.subagents`, `ctx.systemPrompt`, `a live continuable in-process child Agent` | `tool/call`, `tool/result`, `a user-role message in the direct parent session` | - | Registered per continuable in-process child rather than globally, so this schema is visible only inside such a child and survives its global `toolFilter`. The same contribution installs the child-scoped `tool:report` prompt section, which this catalog does not render. The parent-facing `send_message` tool is installed independently. |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
+| `@deepseek-ai/dsh-tool-celery-harness` | `celery_calibrate_verifier`, `celery_decision`, `celery_fixate`, `celery_goal_gate`, `celery_telemetry`, `celery_verify_goal` | `ctx.tools`, `ctx.subprocess` | `tool/call`, `tool/result` | - | The celery reliability-harness tools run deterministic python checks (goal gate, verifier calibration, telemetry, decision, fixation) through the subprocess seam and return their text verdicts. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 
@@ -1728,6 +1729,216 @@ Record and update a structured task list for the current work. Send the ENTIRE l
 Source: [`packages/todo/tool-todo/src/index.ts`](../packages/todo/tool-todo/src/index.ts)
 
 todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.
+
+<a id="deepseek-aidsh-tool-celery-harness"></a>
+
+## `@deepseek-ai/dsh-tool-celery-harness`
+
+### `celery_calibrate_verifier`
+
+Deterministic verifier calibration: run the celery β/α control-injection suite against the given injection-set JSON and report misjudge rates with Wilson confidence intervals. Exit 0 = within thresholds, exit 1 = regression — a regression returns the full Chinese α/β report as a tool error. Use after changing the judge or its prompt.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "injectPath": {
+      "type": "string",
+      "description": "Path to the injection-set JSON with correct/wrong arrays."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  },
+  "required": [
+    "injectPath"
+  ]
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+### `celery_decision`
+
+Deterministic decision classifier from the celery decision-principle library: low-risk exploration decisions (explore/direction/stop-continue) are answered autonomously with principle advice; high-risk decisions (send/delete/publish/external) require user confirmation. Returns the Chinese verdict with the applicable principles.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "description": "Decision type: explore (low-risk, autonomous) or send (high-risk, needs confirmation).",
+      "enum": [
+        "explore",
+        "send"
+      ]
+    },
+    "question": {
+      "type": "string",
+      "description": "The decision question in natural language."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  },
+  "required": [
+    "kind",
+    "question"
+  ]
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+### `celery_fixate`
+
+Deterministic methodology-fixation filter: ask the four questions before fixing a lesson — does it change future actions, is it already covered by code/rules, will it be used again, and is it non-duplicate — and decide FIXATE or SKIP with the Chinese reason. Use before writing any lesson to memory or documentation.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "topic": {
+      "type": "string",
+      "description": "The methodology topic being considered for fixation."
+    },
+    "q1": {
+      "type": "string",
+      "description": "Q1: does this change future actions? y/n."
+    },
+    "q2": {
+      "type": "string",
+      "description": "Q2: is it already covered by code/rules? y/n."
+    },
+    "q3": {
+      "type": "string",
+      "description": "Q3: will it be used again (not a one-off)? y/n."
+    },
+    "q4": {
+      "type": "string",
+      "description": "Q4: is it non-duplicate of existing memory/docs? y/n."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  },
+  "required": [
+    "topic",
+    "q1",
+    "q2",
+    "q3",
+    "q4"
+  ]
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+### `celery_goal_gate`
+
+Deterministic goal-layer gate: run the celery goal three-questions check (is the goal/why/output complete, is the output deliverable, is the task merely a carrier). Exit 0 = PASS, exit 1 = REVIEW — a gate not passed returns the full Chinese verdict and issue list as a tool error. Answer before calling: what real output the user wants (goal), why this task exists (why), and what the deliverable is (output).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "goal": {
+      "type": "string",
+      "description": "The real output the user wants, not the task name."
+    },
+    "why": {
+      "type": "string",
+      "description": "Why this task exists; the task may be a carrier for testing the methodology."
+    },
+    "output": {
+      "type": "string",
+      "description": "The deliverable: patch / document / capability / conclusion."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  },
+  "required": [
+    "goal",
+    "why",
+    "output"
+  ]
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+### `celery_telemetry`
+
+Deterministic online-parameter monitor for the celery diagnostics ρ (goal drift), β (verifier leak-through), and p₁ (single-step failure rate). With no parameters it reports the current rolling parameters and alerts; with any of rho/beta/p1 it records a round and reports the updated state. Exit 0 = nominal, exit 1 = alert — an alert returns the full Chinese parameter line and threshold advice as a tool error.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "rho": {
+      "type": "number",
+      "description": "Goal-drift estimate in [0,1]; present means record a round."
+    },
+    "beta": {
+      "type": "number",
+      "description": "Verifier leak-through estimate in [0,1]; present means record a round."
+    },
+    "p1": {
+      "type": "number",
+      "description": "Single-step failure-rate estimate in [0,1]; present means record a round."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  }
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+### `celery_verify_goal`
+
+Deterministic exploration-convergence check: decide whether continued exploration is still productive or has converged (no new findings across the window rounds) and should stop. Exit 0 = CONTINUE, exit 1 = CONVERGED — convergence returns the full Chinese status as a tool error. Supply the rounds already run, the new findings count, and the convergence window.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "rounds": {
+      "type": "number",
+      "description": "How many exploration rounds have run."
+    },
+    "newFindings": {
+      "type": "number",
+      "description": "Number of new advanceable candidates found this round."
+    },
+    "window": {
+      "type": "number",
+      "description": "Consecutive empty rounds that count as converged."
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory for the check; defaults to the session cwd."
+    }
+  },
+  "required": [
+    "rounds",
+    "newFindings",
+    "window"
+  ]
+}
+```
+
+Source: [`packages/guard/tool-celery-harness/src/index.ts`](../packages/guard/tool-celery-harness/src/index.ts)
+
+The celery reliability-harness tools run deterministic python checks (goal gate, verifier calibration, telemetry, decision, fixation) through the subprocess seam and return their text verdicts.
 
 <a id="deepseek-aidsh-tool-workflow"></a>
 

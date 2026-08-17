@@ -131,6 +131,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'agentModelSelection',
+    summary: 'Owns one process-local ModelSelectionRef per Agent.',
+    description: 'Owns one process-local ModelSelectionRef per Agent. The WeakMap key means a disposed Agent\'s selection is collectable without an explicit disposer; the `installModelSelection` listeners it installs unwind with the Agent\'s scoped context.',
+    methods: [
+      {
+        signature: 'install(agentCtx: Context, seed?: ModelSelection): ModelSelectionRef',
+        description: 'Install the per-Agent selection into an unpublished Agent scope.',
+        parameters: [{ name: 'agentCtx', description: 'the Agent\'s scoped context carrying `ctx.agent`.' }, { name: 'seed', description: 'the initial selection, or `undefined` when the entry point resolves the model lazily.' }],
+        returns: 'the installed ref; an already-installed ref is returned unchanged.',
+        throws: ['when `agentCtx` is not an Agent scope (no `ctx.agent`).'],
+      },
+      {
+        signature: 'ref(agent: Agent): ModelSelectionRef | undefined',
+        description: 'Read the live selection for an exact live Agent.',
+        parameters: [{ name: 'agent', description: 'the Agent whose selection to read.' }],
+        returns: 'the installed ref, or `undefined` when the entry point did not install one (the Agent was created by a consumer that owns its own selection, e.g. the Host ApiProxy).',
+      },
+    ],
+  },
+  {
     key: 'agentPresets',
     summary: 'Registry over the deployment\'s agent presets.',
     description: 'Registry over the deployment\'s agent presets.\n\nDiscovery is unmemoized: `list()` and `resolve()` re-read the roots on every call so a preset authored while the process runs is visible immediately, and a preset deleted underneath a picker disappears from the next read.',
@@ -3464,6 +3484,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelModalityMap',
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
+  },
+  {
+    name: 'ModelSelectionRef',
+    declaration: 'export interface ModelSelectionRef {\n    current: ModelSelection | undefined;\n    assembled: ModelSelection | undefined;\n}',
   },
   {
     name: 'ObjectJsonSchema',

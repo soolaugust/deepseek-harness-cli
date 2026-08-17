@@ -379,6 +379,37 @@ Types: [SessionHeader](persistence.md)
 
 Source: [`packages/core/agent-loop/src/index.ts:296`](../../packages/core/agent-loop/src/index.ts)
 
+<a id="ctxagentmodelselection--agentmodelselectionservice"></a>
+
+### `ctx.agentModelSelection` — `AgentModelSelectionService`
+
+Owns one process-local ModelSelectionRef per Agent. The WeakMap key means a disposed Agent's selection is collectable without an explicit disposer; the `installModelSelection` listeners it installs unwind with the Agent's scoped context.
+
+```ts cordis-catalog
+/**
+ * Install the per-Agent selection into an unpublished Agent scope.
+ *
+ * @param agentCtx - the Agent's scoped context carrying `ctx.agent`.
+ * @param seed - the initial selection, or `undefined` when the entry point
+ *   resolves the model lazily.
+ * @returns the installed ref; an already-installed ref is returned unchanged.
+ * @throws when `agentCtx` is not an Agent scope (no `ctx.agent`).
+ */
+install(agentCtx: Context, seed?: ModelSelection): ModelSelectionRef
+
+/**
+ * Read the live selection for an exact live Agent.
+ *
+ * @param agent - the Agent whose selection to read.
+ * @returns the installed ref, or `undefined` when the entry point did not
+ *   install one (the Agent was created by a consumer that owns its own
+ *   selection, e.g. the Host ApiProxy).
+ */
+ref(agent: Agent): ModelSelectionRef | undefined
+```
+
+Source: [`packages/core/agent-model-selection/src/index.ts:31`](../../packages/core/agent-model-selection/src/index.ts)
+
 <a id="ctxagentpresets--agentpresets"></a>
 
 ### `ctx.agentPresets` — `AgentPresets`
